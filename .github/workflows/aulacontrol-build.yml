@@ -1,0 +1,60 @@
+name: AulaControl Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [build-aulacontrol]
+    paths:
+      - 'AulaControlBuild/**'
+      - '.github/workflows/aulacontrol-build.yml'
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reconstruct source
+        shell: bash
+        run: |
+          cat AulaControlBuild/source.part00.b64 AulaControlBuild/source.part01.b64 AulaControlBuild/source.part02.b64 AulaControlBuild/source.part03.b64 AulaControlBuild/source.part04.b64 AulaControlBuild/source.part05.b64 AulaControlBuild/source.part06.b64 AulaControlBuild/source.part07.b64 > source.b64
+          base64 -d source.b64 > source.zip
+          echo '7cf4280fade8d9a55f2ca553d333efe5b452c61a4e833ab522d46bbc560dfae2  source.zip' | sha256sum -c -
+          unzip -q source.zip
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.0'
+      - name: Build Android APK
+        working-directory: AulaControl/android/AulaControlAgent
+        run: gradle --no-daemon :app:assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AulaControl-Android-v0.2
+          path: AulaControl/android/AulaControlAgent/app/build/outputs/apk/debug/app-debug.apk
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reconstruct source
+        shell: pwsh
+        run: |
+          $txt = ''
+          0..7 | ForEach-Object { $txt += Get-Content ("AulaControlBuild/source.part{0:D2}.b64" -f $_) -Raw }
+          [IO.File]::WriteAllBytes('source.zip',[Convert]::FromBase64String($txt))
+          $hash=(Get-FileHash source.zip -Algorithm SHA256).Hash.ToLower()
+          if($hash -ne '7cf4280fade8d9a55f2ca553d333efe5b452c61a4e833ab522d46bbc560dfae2'){ throw "Hash mismatch: $hash" }
+          Expand-Archive source.zip -DestinationPath .
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Publish Windows app
+        shell: pwsh
+        run: dotnet publish .\AulaControl\windows\AulaControlTeacher\AulaControlTeacher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o .\dist\windows
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AulaControl-Windows-v0.2
+          path: dist/windows/**
