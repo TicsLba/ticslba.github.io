@@ -14,7 +14,7 @@ jobs:
         with: { ref: build-aulacontrol }
       - name: Reconstruct source
         run: |
-          cat AulaControlBuild/source.part00.b64 AulaControlBuild/source.part01.b64 AulaControlBuild/source.part02.b64 AulaControlBuild/source.part03.b64 AulaControlBuild/source.part04.b64 AulaControlBuild/source.part05.b64 AulaControlBuild/source.part06.b64 AulaControlBuild/source.part07.b64 > source.b64
+          cat AulaControlBuild/source.part00.b64 AulaControlBuild/source.part01.b64 AulaControlBuild/source.part02.b64 AulaControlBuild/source.part03.b64 AulaControlBuild/source.part04.b64 AulaControlBuild/source.part05.b64 AulaControlBuild/source.part06.b64 AulaControlBuild/source.part06b.b64 AulaControlBuild/source.part07.b64 > source.b64
           base64 -d source.b64 > source.zip
           echo '7cf4280fade8d9a55f2ca553d333efe5b452c61a4e833ab522d46bbc560dfae2  source.zip' | sha256sum -c -
           unzip -q source.zip
@@ -38,7 +38,8 @@ jobs:
       - name: Reconstruct source
         shell: pwsh
         run: |
-          $txt=''; 0..7 | % { $txt += Get-Content ("AulaControlBuild/source.part{0:D2}.b64" -f $_) -Raw }
+          $names=@('source.part00.b64','source.part01.b64','source.part02.b64','source.part03.b64','source.part04.b64','source.part05.b64','source.part06.b64','source.part06b.b64','source.part07.b64')
+          $txt=''; $names | % { $txt += Get-Content (Join-Path 'AulaControlBuild' $_) -Raw }
           [IO.File]::WriteAllBytes('source.zip',[Convert]::FromBase64String($txt))
           $h=(Get-FileHash source.zip -Algorithm SHA256).Hash.ToLower(); if($h -ne '7cf4280fade8d9a55f2ca553d333efe5b452c61a4e833ab522d46bbc560dfae2'){ throw "Hash mismatch $h" }
           Expand-Archive source.zip -DestinationPath .
