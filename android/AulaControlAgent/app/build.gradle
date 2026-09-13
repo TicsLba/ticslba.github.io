@@ -1,8 +1,30 @@
 plugins { id 'com.android.application' }
+
 android {
     namespace 'cl.antumapu.aulacontrol'
     compileSdk 36
-    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
-    defaultConfig { applicationId 'cl.antumapu.aulacontrol'; minSdk 26; targetSdk 36; versionCode 10000; versionName '1.0.0' }
-    buildTypes { debug { applicationIdSuffix '.debug'; versionNameSuffix '-debug' } release { minifyEnabled false; shrinkResources false } }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    defaultConfig {
+        applicationId 'cl.antumapu.aulacontrol'
+        minSdk 26
+        targetSdk 36
+        versionCode 10000
+        versionName '1.0.0'
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix '.debug'
+            versionNameSuffix '-debug'
+        }
+        release {
+            minifyEnabled false
+            shrinkResources false
+        }
+    }
 }
