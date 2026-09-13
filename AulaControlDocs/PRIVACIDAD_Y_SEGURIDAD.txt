@@ -1,0 +1,25 @@
+AULACONTROL 1.1.2 · PRIVACIDAD Y SEGURIDAD
+
+AulaControl fue diseñado para proteger a los usuarios y a los dispositivos institucionales sin capturar credenciales personales.
+
+1. CONTRASEÑAS Y CREDENCIALES
+AulaControl no solicita, registra, almacena ni transmite contraseñas personales, PIN, credenciales de cuentas, tokens de autenticación ni claves ingresadas por el usuario. No realiza keylogging ni crea historiales de pulsaciones de teclado.
+
+2. DATOS NECESARIOS PARA LA SESIÓN
+Para identificar el uso del dispositivo, AulaControl procesa únicamente los datos operativos necesarios para su función: nombre y curso declarados por el usuario, nombre e identificador del dispositivo, dirección IP local, batería, estado de conexión, versión de Android y estado de supervisión.
+
+3. SUPERVISIÓN DE PANTALLA
+Durante una sesión activa, la imagen de pantalla se transmite temporalmente a la consola docente autorizada dentro de la red institucional configurada. AulaControl no guarda grabaciones ni capturas históricas por defecto.
+
+4. SIN ENVÍO DE CREDENCIALES AL DESARROLLADOR
+AulaControl no envía contraseñas, credenciales personales ni contenido de autenticación a servidores del desarrollador. La supervisión opera entre la tablet institucional y la consola autorizada del establecimiento.
+
+5. DISPOSITIVOS INSTITUCIONALES
+Los dispositivos administrados son propiedad de la institución. Por razones de seguridad, custodia, disponibilidad, prevención de pérdida y uso responsable, el dispositivo puede ser identificado, localizado dentro de la infraestructura administrada y supervisado técnicamente durante su utilización institucional.
+
+6. FINALIDAD
+La finalidad de AulaControl es contribuir a la seguridad del usuario, la protección del dispositivo institucional y la supervisión responsable de su uso educativo. No está diseñado para obtener contraseñas, credenciales privadas ni información de autenticación personal.
+
+Desarrollador: Eduardo Pérez González
+Producto: AulaControl
+Versión: 1.1.2
