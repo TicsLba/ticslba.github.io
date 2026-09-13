@@ -55,13 +55,16 @@ jobs:
       - name: Build Windows
         shell: pwsh
         run: dotnet publish .\windows\AulaControlTeacher\AulaControlTeacher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o .\dist\windows
-      - name: Authenticode sign Windows executable
-        if: ${{ secrets.WINDOWS_CODE_SIGN_PFX_BASE64 != '' && secrets.WINDOWS_CODE_SIGN_PASSWORD != '' }}
+      - name: Optional Authenticode signing
         shell: pwsh
         env:
           CERT_B64: ${{ secrets.WINDOWS_CODE_SIGN_PFX_BASE64 }}
           CERT_PASS: ${{ secrets.WINDOWS_CODE_SIGN_PASSWORD }}
         run: |
+          if ([string]::IsNullOrWhiteSpace($env:CERT_B64) -or [string]::IsNullOrWhiteSpace($env:CERT_PASS)) {
+            Write-Host "No trusted Windows code-signing certificate configured; keeping EXE unsigned."
+            exit 0
+          }
           [IO.File]::WriteAllBytes(".\windows-signing.pfx",[Convert]::FromBase64String($env:CERT_B64))
           $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Filter signtool.exe -Recurse | Sort-Object FullName -Descending | Select-Object -First 1
           if (-not $signtool) { throw "signtool.exe not found" }
