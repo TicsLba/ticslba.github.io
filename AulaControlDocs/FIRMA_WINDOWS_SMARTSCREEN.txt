@@ -1,0 +1,21 @@
+AULACONTROL · FIRMA WINDOWS / SMARTSCREEN
+
+Metadatos internos del ejecutable:
+Empresa / Company: Desarrollador Eduardo Pérez González
+Autor: Eduardo Pérez González
+Producto: AulaControl
+
+IMPORTANTE:
+El texto que Windows SmartScreen muestra como "Editor" o "Publisher" no se obtiene de los metadatos internos del EXE. Se obtiene de la firma Authenticode aplicada con un certificado de firma de código confiable.
+
+Para que SmartScreen muestre un editor verificado en equipos externos se requiere:
+1. Adquirir un certificado de firma de código (OV/EV o equivalente) emitido por una autoridad certificadora confiable.
+2. El nombre del editor que mostrará Windows será el sujeto verificado del certificado. La autoridad certificadora debe aprobar ese nombre.
+3. Configurar el certificado en el pipeline de compilación de AulaControl.
+4. Firmar AulaControlTeacher.exe con SHA-256 y sello de tiempo antes de distribuirlo.
+
+El pipeline está preparado para usar los secretos:
+WINDOWS_CODE_SIGN_PFX_BASE64
+WINDOWS_CODE_SIGN_PASSWORD
+
+Sin un certificado Authenticode confiable, Windows puede seguir mostrando "Editor desconocido" aunque las propiedades internas del archivo indiquen "Desarrollador Eduardo Pérez González".
