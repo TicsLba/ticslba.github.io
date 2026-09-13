@@ -1,4 +1,4 @@
-name: AulaControl CI
+name: AulaControl 1.0 Build
 
 on:
   push:
@@ -11,55 +11,38 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with: { ref: build-aulacontrol }
-      - name: Verify and reconstruct source
-        run: |
-          echo 'd352e63b3a0213709206d96745a52779667c6d6f13860e231a1b839d6fedc11f  AulaControlBuild/v2_00.b64' | sha256sum -c -
-          echo '9d98bced943daebc243f7ee16f3e1fcc3d4b87664c62a8603fe99785f25546a1  AulaControlBuild/v2_01.b64' | sha256sum -c -
-          echo '35cb2c3a61f1608e162fc5109fb0ed99bb4848d3ece3afaedd60066ba77eb20e  AulaControlBuild/v3_02.b64' | sha256sum -c -
-          echo 'a98cb9c6ba141f12a8b9151b8ef4b9f27bc917c4aa441d9e2137e31a620842cc  AulaControlBuild/v3_03.b64' | sha256sum -c -
-          echo '8ec0d205cbddd072aeda801ba3d06fc7e177d88115e60a50fa2f7b9478a37baa  AulaControlBuild/v3_04.b64' | sha256sum -c -
-          echo '081a7fe067b796606ddcb186aa35ea85f6c5a9fc264a8fa7f889200230e1dedd  AulaControlBuild/v3_05.b64' | sha256sum -c -
-          echo '5bb1831794463bbf4032b4f53a34d558dd704f0ece35e3b7c18651322e18872b  AulaControlBuild/v3_06.b64' | sha256sum -c -
-          echo '94837f86ba5c55e555fb135de79a7c2df4093df8e7a68f4ce138d0f681e4c8b9  AulaControlBuild/v3_07.b64' | sha256sum -c -
-          echo '31377aa2d42e8a88c7fa1197e02617f4a1b29c768ffe69a823918d9d92acc6de  AulaControlBuild/v3_08.b64' | sha256sum -c -
-          echo '7e055aba9b383e5f505b364b9ca68f991268f25ec05086161a5eef1a7c8f5afc  AulaControlBuild/v3_09.b64' | sha256sum -c -
-          cat AulaControlBuild/v2_00.b64 AulaControlBuild/v2_01.b64 AulaControlBuild/v3_02.b64 AulaControlBuild/v3_03.b64 AulaControlBuild/v3_04.b64 AulaControlBuild/v3_05.b64 AulaControlBuild/v3_06.b64 AulaControlBuild/v3_07.b64 AulaControlBuild/v3_08.b64 AulaControlBuild/v3_09.b64 > source.b64
-          base64 -d source.b64 > source.zip
-          echo '7cf4280fade8d9a55f2ca553d333efe5b452c61a4e833ab522d46bbc560dfae2  source.zip' | sha256sum -c -
-          unzip -q source.zip
+        with:
+          ref: aulacontrol-v1-build
       - uses: actions/setup-java@v4
-        with: { distribution: temurin, java-version: '17' }
+        with:
+          distribution: temurin
+          java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
-        with: { gradle-version: '9.6.0' }
-      - name: Build APK
-        working-directory: AulaControl/android/AulaControlAgent
-        run: gradle --no-daemon :app:assembleDebug
+        with:
+          gradle-version: '9.6.0'
+      - name: Build Android APKs
+        working-directory: android/AulaControlAgent
+        run: gradle --no-daemon :app:assembleDebug :app:assembleRelease
       - uses: actions/upload-artifact@v4
         with:
-          name: AulaControl-Android-v0.2
-          path: AulaControl/android/AulaControlAgent/app/build/outputs/apk/debug/app-debug.apk
+          name: AulaControl-Android-1.0.0
+          path: |
+            android/AulaControlAgent/app/build/outputs/apk/debug/app-debug.apk
+            android/AulaControlAgent/app/build/outputs/apk/release/app-release-unsigned.apk
 
   windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-        with: { ref: build-aulacontrol }
-      - name: Reconstruct source
-        shell: pwsh
-        run: |
-          $names=@('v2_00.b64','v2_01.b64','v3_02.b64','v3_03.b64','v3_04.b64','v3_05.b64','v3_06.b64','v3_07.b64','v3_08.b64','v3_09.b64')
-          $txt=''; $names | % { $txt += Get-Content (Join-Path 'AulaControlBuild' $_) -Raw }
-          [IO.File]::WriteAllBytes('source.zip',[Convert]::FromBase64String($txt))
-          $h=(Get-FileHash source.zip -Algorithm SHA256).Hash.ToLower()
-          if($h -ne '7cf4280fade8d9a55f2ca553d333efe5b452c61a4e833ab522d46bbc560dfae2'){ throw "Hash mismatch $h" }
-          Expand-Archive source.zip -DestinationPath .
+        with:
+          ref: aulacontrol-v1-build
       - uses: actions/setup-dotnet@v4
-        with: { dotnet-version: '10.0.x' }
+        with:
+          dotnet-version: '10.0.x'
       - name: Build Windows
         shell: pwsh
-        run: dotnet publish .\AulaControl\windows\AulaControlTeacher\AulaControlTeacher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o .\dist\windows
+        run: dotnet publish .\windows\AulaControlTeacher\AulaControlTeacher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o .\dist\windows
       - uses: actions/upload-artifact@v4
         with:
-          name: AulaControl-Windows-v0.2
+          name: AulaControl-Windows-1.0.0
           path: dist/windows/**
