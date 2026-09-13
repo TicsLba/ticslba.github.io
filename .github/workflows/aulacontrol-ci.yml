@@ -1,5 +1,5 @@
-# AulaControl 1.1 Managed build
-name: AulaControl 1.1 Managed Build
+# AulaControl 1.1.1 Strict build
+name: AulaControl 1.1.1 Strict Build
 
 on:
   push:
@@ -25,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: aulacontrol-v1-1-managed
+          ref: aulacontrol-v1-1-1-strict
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -38,7 +38,7 @@ jobs:
         run: gradle --no-daemon :app:assembleDebug :app:assembleRelease
       - uses: actions/upload-artifact@v4
         with:
-          name: AulaControl-Android-1.1.0
+          name: AulaControl-Android-1.1.1
           path: |
             android/AulaControlAgent/app/build/outputs/apk/debug/app-debug.apk
             android/AulaControlAgent/app/build/outputs/apk/release/app-release-unsigned.apk
@@ -48,7 +48,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: aulacontrol-v1-1-managed
+          ref: aulacontrol-v1-1-1-strict
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
@@ -57,5 +57,5 @@ jobs:
         run: dotnet publish .\windows\AulaControlTeacher\AulaControlTeacher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o .\dist\windows
       - uses: actions/upload-artifact@v4
         with:
-          name: AulaControl-Windows-1.1.0
+          name: AulaControl-Windows-1.1.1
           path: dist/windows/**
