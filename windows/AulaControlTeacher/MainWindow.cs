@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;using System.Windows;using System.Windows.Controls;using System.Windows.Data;using System.Windows.Media;using System.Windows.Media.Imaging;using System.Windows.Threading;
+using System.Collections.ObjectModel;using System.Windows;using System.Windows.Controls;using System.Windows.Controls.Primitives;using System.Windows.Data;using System.Windows.Media;using System.Windows.Media.Imaging;using System.Windows.Threading;
 namespace AulaControlTeacher;
 public class MainWindow:Window{
  const string LOGO="https://ia803101.us.archive.org/6/items/logos_20211117/color%20transparente.png";static readonly SolidColorBrush Green=new(Color.FromRgb(15,90,60)),Dark=new(Color.FromRgb(8,56,38)),Orange=new(Color.FromRgb(243,107,33)),Ink=new(Color.FromRgb(28,43,36)),Muted=new(Color.FromRgb(94,111,103)),Canvas=new(Color.FromRgb(244,248,246));
