@@ -1,31 +1,216 @@
 package cl.antumapu.aulacontrol;
 
-import android.Manifest;import android.app.*;import android.content.*;import android.content.pm.*;import android.graphics.*;import android.graphics.drawable.GradientDrawable;import android.media.projection.MediaProjectionManager;import android.net.Uri;import android.os.*;import android.provider.Settings;import android.text.InputType;import android.view.*;import android.widget.*;
+import android.Manifest;
+import android.app.*;
+import android.content.*;
+import android.content.pm.*;
+import android.graphics.*;
+import android.graphics.drawable.GradientDrawable;
+import android.media.projection.MediaProjectionManager;
+import android.net.Uri;
+import android.os.*;
+import android.provider.Settings;
+import android.text.InputType;
+import android.view.*;
+import android.widget.*;
 
-public class MainActivity extends Activity{
- static final int CAP=42;static final int GREEN=Color.rgb(15,90,60),DARK=Color.rgb(8,56,38),ORANGE=Color.rgb(243,107,33),RED=Color.rgb(176,48,48),INK=Color.rgb(27,42,35),MUTED=Color.rgb(92,108,101),BG=Color.rgb(244,248,246);Handler ui=new Handler(Looper.getMainLooper());long captureAt;
- @Override public void onCreate(Bundle b){super.onCreate(b);if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},9);route();}
- @Override protected void onResume(){super.onResume();if(Core.ready(this))route();}
- @Override public void onBackPressed(){if(Core.adminMode(this)){closeAdmin();return;}if(Managed.profileOwner(this)&&ScreenCaptureService.active){openHome();return;}route();}
- void route(){if(!Core.ready(this)){setupUi();return;}agent();Managed.apply(this);if(Managed.profileOwner(this)){guestUi();return;}if(!Managed.owner(this)){managedRequiredUi();return;}Managed.enterGate(this);roleGate();}
- int dp(int n){return(int)(n*getResources().getDisplayMetrics().density+.5f);}GradientDrawable bg(int c,int r){GradientDrawable g=new GradientDrawable();g.setColor(c);g.setCornerRadius(dp(r));return g;}TextView t(String s,int z,boolean b,int c){TextView v=new TextView(this);v.setText(s);v.setTextSize(z);v.setTextColor(c);if(b)v.setTypeface(null,1);return v;}Button btn(String s,int c){Button b=new Button(this);b.setText(s);b.setTextColor(Color.WHITE);b.setTextSize(15);b.setTypeface(null,1);b.setAllCaps(false);b.setBackground(bg(c,14));b.setPadding(dp(16),dp(12),dp(16),dp(12));LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.setMargins(0,dp(5),0,dp(5));b.setLayoutParams(p);return b;}EditText input(String h,boolean pw){EditText e=new EditText(this);e.setHint(h);e.setTextSize(17);e.setSingleLine(true);e.setPadding(dp(15),dp(12),dp(15),dp(12));e.setBackground(bg(Color.WHITE,14));if(pw)e.setInputType(InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_VARIATION_PASSWORD);LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.setMargins(0,dp(5),0,dp(9));e.setLayoutParams(p);return e;}LinearLayout root(){LinearLayout r=new LinearLayout(this);r.setOrientation(LinearLayout.VERTICAL);r.setPadding(dp(24),dp(24),dp(24),dp(30));r.setBackgroundColor(BG);return r;}LinearLayout card(){LinearLayout c=new LinearLayout(this);c.setOrientation(LinearLayout.VERTICAL);c.setPadding(dp(20),dp(18),dp(20),dp(18));c.setBackground(bg(Color.WHITE,20));LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.setMargins(0,dp(7),0,dp(10));c.setLayoutParams(p);return c;}void title(LinearLayout r,String h,String s){r.addView(t("AulaControl",31,true,DARK));TextView b=t("Seguridad institucional · Sesiones privadas y temporales",14,false,MUTED);b.setPadding(0,0,0,dp(18));r.addView(b);r.addView(t(h,27,true,INK));TextView y=t(s,14,false,MUTED);y.setPadding(0,dp(5),0,dp(12));r.addView(y);}void toast(String s){Toast.makeText(this,s,Toast.LENGTH_SHORT).show();}
- void setupUi(){ScrollView sc=new ScrollView(this);LinearLayout r=root();sc.addView(r);title(r,"Configurar dispositivo","Este paso se realiza una sola vez y queda protegido por la contraseña administrativa.");EditText dn=input("Nombre del dispositivo · Ej. TABLET-08",false),key=input("Clave técnica del establecimiento",false),p1=input("Contraseña administrativa",true),p2=input("Repetir contraseña",true);r.addView(dn);r.addView(key);r.addView(p1);r.addView(p2);Button ok=btn("Activar AulaControl",GREEN);r.addView(ok);TextView n=t("AulaControl no registra contraseñas personales. La clave técnica se cifra con Android Keystore y la contraseña administrativa se conserva únicamente como hash derivado.",12,false,MUTED);n.setPadding(0,dp(10),0,0);r.addView(n);ok.setOnClickListener(v->{String d=dn.getText().toString().trim(),k=key.getText().toString().trim(),p=p1.getText().toString();if(d.length()<2||k.length()<10||p.length()<6){toast("Completa los datos requeridos");return;}if(!p.equals(p2.getText().toString())){toast("Las contraseñas no coinciden");return;}Core.setup(this,d,k,p);agent();route();});setContentView(sc);}
- void managedRequiredUi(){LinearLayout r=root();title(r,"Administración del dispositivo pendiente","Para crear sesiones invitado reales y proteger las aplicaciones, esta tablet debe quedar aprovisionada como Device Owner.");LinearLayout c=card();c.addView(t("🔒 Modo comercial protegido",20,true,DARK));c.addView(t("La instalación normal permite revisar la interfaz, pero las sesiones permanecen deshabilitadas hasta completar el aprovisionamiento institucional.",14,false,MUTED));r.addView(c);setContentView(r);}
- void roleGate(){ScrollView sc=new ScrollView(this);LinearLayout r=root();sc.addView(r);title(r,"¿Quién utilizará este dispositivo?","Toda persona debe identificarse. Profesor y estudiante utilizan una sesión Android temporal; Administrador es un acceso separado protegido por clave.");LinearLayout device=card();device.addView(t(Core.dn(this),19,true,DARK));device.addView(t("🔒 Dispositivo administrado · "+Core.id(this),13,false,GREEN));r.addView(device);Button st=btn("🎓  Soy estudiante",GREEN),te=btn("◉  Soy profesor",DARK);r.addView(st);r.addView(te);TextView priv=t("Tus datos de sesión se eliminan al finalizar. AulaControl supervisa la pantalla en vivo sin keylogging, sin grabación histórica y sin almacenar contraseñas personales.",13,false,MUTED);priv.setPadding(dp(3),dp(12),dp(3),dp(12));r.addView(priv);Button ad=btn("⚙  Administración",ORANGE);r.addView(ad);st.setOnClickListener(v->identityForm(Core.ROLE_STUDENT));te.setOnClickListener(v->identityForm(Core.ROLE_TEACHER));ad.setOnClickListener(v->askAdmin());setContentView(sc);}
- void identityForm(String role){ScrollView sc=new ScrollView(this);LinearLayout r=root();sc.addView(r);boolean teacher=Core.ROLE_TEACHER.equals(role);title(r,teacher?"Sesión de profesor":"Sesión de estudiante",teacher?"Ingresa únicamente tu nombre y apellido.":"Ingresa tu nombre, apellido y curso.");EditText name=input("Nombre y apellido",false);r.addView(name);EditText course=null;if(!teacher){course=input("Curso · Ej. 8° Básico",false);r.addView(course);}Button go=btn("Crear sesión temporal",GREEN);r.addView(go);Button back=btn("Volver",DARK);r.addView(back);EditText finalCourse=course;go.setOnClickListener(v->{String n=name.getText().toString().trim(),co=finalCourse==null?"":finalCourse.getText().toString().trim();if(n.length()<3||(!teacher&&co.isEmpty())){toast("Completa los datos de la sesión");return;}Managed.exitGate(this);if(!SessionUsers.createAndSwitch(this,role,n,co)){toast("No fue posible crear el usuario temporal");Managed.enterGate(this);}});back.setOnClickListener(v->roleGate());setContentView(sc);}
- void guestUi(){if(Core.adminMode(this)){adminPanel();return;}if(Core.user(this).isEmpty()){LinearLayout r=root();title(r,"Sesión temporal no válida","No se encontró identidad de sesión. Cierra este usuario para regresar al acceso institucional.");Button out=btn("Cerrar usuario temporal",ORANGE);r.addView(out);out.setOnClickListener(v->SessionUsers.logoutGuest(this));setContentView(r);return;}Managed.applyGuest(this);if(!ScreenCaptureService.active){guestStartUi();return;}sessionUi();}
- void guestStartUi(){ScrollView sc=new ScrollView(this);LinearLayout r=root();sc.addView(r);title(r,"Sesión lista para proteger","Antes de abrir el launcher Android, AulaControl debe confirmar la supervisión en vivo de esta sesión.");LinearLayout c=card();c.addView(t(Core.user(this),23,true,DARK));c.addView(t(Core.roleLabel(this)+(Core.course(this).isEmpty()?"":" · "+Core.course(this)),15,true,GREEN));c.addView(t("🔒 Sesión privada y temporal",14,false,MUTED));r.addView(c);Button go=btn("Iniciar sesión segura",GREEN);r.addView(go);TextView p=t("La autorización de captura pertenece a Android. Si no se completa, el launcher no se habilita. La imagen se transmite en vivo a la consola autorizada y no se guarda por defecto.",13,false,MUTED);p.setPadding(0,dp(10),0,dp(10));r.addView(p);Button admin=btn("Administración",ORANGE);r.addView(admin);Button out=btn("Cancelar y cerrar sesión",DARK);r.addView(out);go.setOnClickListener(v->capture());admin.setOnClickListener(v->askAdmin());out.setOnClickListener(v->endGuest());setContentView(sc);}
- void capture(){captureAt=System.currentTimeMillis();MediaProjectionManager m=(MediaProjectionManager)getSystemService(MEDIA_PROJECTION_SERVICE);startActivityForResult(m.createScreenCaptureIntent(),CAP);}
- @Override protected void onActivityResult(int rq,int rc,Intent data){super.onActivityResult(rq,rc,data);if(rq==CAP){if(rc==RESULT_OK&&data!=null){Intent s=new Intent(this,ScreenCaptureService.class);s.putExtra("rc",rc);s.putExtra("data",data);if(Build.VERSION.SDK_INT>=26)startForegroundService(s);else startService(s);waitFrame();}else guestStartUi();}}
- void waitFrame(){Runnable[] q=new Runnable[1];q[0]=()->{if(ScreenCaptureService.active&&ScreenCaptureService.lastFrameAt>=captureAt){Core.touch(this);agent();openHome();return;}if(System.currentTimeMillis()-captureAt>9000){stopService(new Intent(this,ScreenCaptureService.class));new AlertDialog.Builder(this).setTitle("Supervisión no confirmada").setMessage("La sesión continuará bloqueada hasta recibir una imagen real.").setPositiveButton("Aceptar",(d,w)->guestStartUi()).show();return;}ui.postDelayed(q[0],250);};ui.post(q[0]);}
- void sessionUi(){ScrollView sc=new ScrollView(this);LinearLayout r=root();sc.addView(r);title(r,"Sesión activa","Puedes volver al launcher original de Android. AulaControl permanece protegiendo y supervisando la sesión en segundo plano.");LinearLayout c=card();c.addView(t(Core.user(this),23,true,DARK));c.addView(t(Core.roleLabel(this)+(Core.course(this).isEmpty()?"":" · "+Core.course(this)),15,true,GREEN));c.addView(t("● Supervisión activa · 🔒 Desinstalaciones bloqueadas",13,true,GREEN));r.addView(c);Button home=btn("Abrir inicio de Android",GREEN),settings=btn("Abrir Ajustes",DARK),admin=btn("Administración",ORANGE),logout=btn("Cerrar sesión",RED);r.addView(home);r.addView(settings);r.addView(admin);r.addView(logout);home.setOnClickListener(v->openHome());settings.setOnClickListener(v->{try{startActivity(new Intent(Settings.ACTION_SETTINGS));}catch(Exception ignored){}});admin.setOnClickListener(v->askAdmin());logout.setOnClickListener(v->confirmLogout());setContentView(sc);}
- void openHome(){try{startActivity(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));}catch(Exception e){toast("No se encontró launcher del sistema");}}
- void confirmLogout(){new AlertDialog.Builder(this).setTitle("Cerrar sesión").setMessage("Se eliminará este usuario temporal y sus datos locales. Las cuentas que no hayas cerrado también desaparecerán del dispositivo.").setNegativeButton("Cancelar",null).setPositiveButton("Cerrar sesión",(d,w)->endGuest()).show();}
- void endGuest(){stopService(new Intent(this,ScreenCaptureService.class));Core.clearIdentity(this);SessionUsers.logoutGuest(this);}
- void askAdmin(){EditText p=input("Contraseña administrativa",true);new AlertDialog.Builder(this).setTitle("Acceso administrador").setView(p).setNegativeButton("Cancelar",null).setPositiveButton("Entrar",(d,w)->{if(Core.checkPw(this,p.getText().toString())){Core.adminMode(this,true);Managed.adminUnlock(this);adminPanel();}else toast("Clave incorrecta");}).show();}
- void adminPanel(){ScrollView sc=new ScrollView(this);LinearLayout r=root();sc.addView(r);title(r,"Centro de administración","Modo de mantenimiento total. Las restricciones del usuario se relajan temporalmente hasta cerrar este panel.");LinearLayout s=card();s.addView(t("🔓 Administración activa",20,true,ORANGE));s.addView(t("Puedes modificar Ajustes, instalar o desinstalar aplicaciones y cambiar la configuración de AulaControl. Las acciones críticas requieren confirmación.",14,false,MUTED));r.addView(s);Button settings=btn("Abrir Ajustes completos de Android",DARK),store=btn("Abrir Play Store",GREEN),apps=btn("Administrar aplicaciones",DARK),cfg=btn("Configurar AulaControl",DARK),restore=btn("Cerrar administración y restaurar protección",GREEN);r.addView(settings);r.addView(store);r.addView(apps);r.addView(cfg);if(Managed.owner(this)){Button clean=btn("Eliminar sesiones temporales residuales",ORANGE),release=btn("Liberar Device Owner",RED);r.addView(clean);r.addView(release);clean.setOnClickListener(v->{SessionUsers.cleanupSecondaryUsers(this);toast("Limpieza solicitada");});release.setOnClickListener(v->confirmRelease());}r.addView(restore);settings.setOnClickListener(v->{try{startActivity(new Intent(Settings.ACTION_SETTINGS));}catch(Exception ignored){}});store.setOnClickListener(v->{try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse("market://details?id="+getPackageName())));}catch(Exception e){try{startActivity(new Intent(Settings.ACTION_APPLICATION_SETTINGS));}catch(Exception ignored){}}});apps.setOnClickListener(v->{try{startActivity(new Intent(Settings.ACTION_APPLICATION_SETTINGS));}catch(Exception ignored){}});cfg.setOnClickListener(v->configUi());restore.setOnClickListener(v->closeAdmin());setContentView(sc);}
- void configUi(){ScrollView sc=new ScrollView(this);LinearLayout r=root();sc.addView(r);title(r,"Configuración de AulaControl","Modifica los parámetros técnicos de este usuario administrado.");EditText dn=input("Nombre del dispositivo",false);dn.setText(Core.dn(this));EditText key=input("Clave técnica",false);key.setText(Core.key(this));EditText pw=input("Nueva contraseña administrativa · opcional",true);r.addView(dn);r.addView(key);r.addView(pw);Button save=btn("Guardar cambios",GREEN),back=btn("Volver",DARK);r.addView(save);r.addView(back);save.setOnClickListener(v->{if(dn.getText().toString().trim().length()<2||key.getText().toString().trim().length()<10){toast("Revisa los campos");return;}Core.config(this,dn.getText().toString(),key.getText().toString(),pw.getText().toString());toast("Configuración guardada");adminPanel();});back.setOnClickListener(v->adminPanel());setContentView(sc);}
- void closeAdmin(){Core.adminMode(this,false);Managed.restoreProtection(this);if(Managed.owner(this))Managed.enterGate(this);route();}
- void confirmRelease(){EditText p=input("Repite la contraseña administrativa",true);new AlertDialog.Builder(this).setTitle("Liberar administración del dispositivo").setMessage("Esta acción reduce la protección institucional y no puede deshacerse sin volver a aprovisionar la tablet.").setView(p).setNegativeButton("Cancelar",null).setPositiveButton("Liberar",(d,w)->{if(Core.checkPw(this,p.getText().toString())){Managed.release(this);toast("Device Owner liberado");}else toast("Clave incorrecta");}).show();}
- void agent(){try{Intent i=new Intent(this,AgentService.class);if(Build.VERSION.SDK_INT>=26)startForegroundService(i);else startService(i);}catch(Exception ignored){}}
+public class MainActivity extends Activity {
+    static final int CAP=42;
+    static final int GREEN=Color.rgb(15,90,60),DARK=Color.rgb(8,56,38),ORANGE=Color.rgb(243,107,33),RED=Color.rgb(176,48,48),INK=Color.rgb(27,42,35),MUTED=Color.rgb(92,108,101),BG=Color.rgb(244,248,246);
+    Handler ui=new Handler(Looper.getMainLooper());
+    long captureAt;
+
+    @Override public void onCreate(Bundle b){
+        super.onCreate(b);
+        if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},9);
+        route();
+    }
+
+    @Override protected void onResume(){super.onResume();if(Core.ready(this))route();}
+    @Override protected void onNewIntent(Intent intent){super.onNewIntent(intent);setIntent(intent);route();}
+    @Override public void onUserInteraction(){super.onUserInteraction();if(Core.guest(this)&&!Core.user(this).isEmpty())Core.touch(this);}
+
+    @Override public void onBackPressed(){
+        if(Core.adminMode(this)){closeAdmin();return;}
+        if(Managed.profileOwner(this)&&ScreenCaptureService.active){openHome();return;}
+        route();
+    }
+
+    void route(){
+        // En un usuario temporal nunca permitimos configurar una segunda copia de
+        // AulaControl. Si el bootstrap falló, se cierra esa sesión y se vuelve al
+        // usuario institucional.
+        if(Managed.profileOwner(this)){
+            if(!Core.ready(this)){guestBootstrapErrorUi();return;}
+            agent();Managed.applyGuest(this);
+            if(Core.adminMode(this)){adminPanel();return;}
+            guestUi();return;
+        }
+
+        if(!Core.ready(this)){setupUi();return;}
+        agent();Managed.apply(this);
+
+        if(Core.adminMode(this)){adminPanel();return;}
+        if(!Managed.owner(this)){managedRequiredUi();return;}
+
+        Managed.enterGate(this);
+        roleGate();
+    }
+
+    int dp(int n){return(int)(n*getResources().getDisplayMetrics().density+.5f);}
+    GradientDrawable bg(int c,int r){GradientDrawable g=new GradientDrawable();g.setColor(c);g.setCornerRadius(dp(r));return g;}
+    TextView t(String s,int z,boolean b,int c){TextView v=new TextView(this);v.setText(s);v.setTextSize(z);v.setTextColor(c);if(b)v.setTypeface(null,1);return v;}
+    Button btn(String s,int c){Button b=new Button(this);b.setText(s);b.setTextColor(Color.WHITE);b.setTextSize(15);b.setTypeface(null,1);b.setAllCaps(false);b.setBackground(bg(c,14));b.setPadding(dp(16),dp(12),dp(16),dp(12));LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.setMargins(0,dp(5),0,dp(5));b.setLayoutParams(p);return b;}
+    EditText input(String h,boolean pw){EditText e=new EditText(this);e.setHint(h);e.setTextSize(17);e.setSingleLine(true);e.setPadding(dp(15),dp(12),dp(15),dp(12));e.setBackground(bg(Color.WHITE,14));if(pw)e.setInputType(InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_VARIATION_PASSWORD);LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.setMargins(0,dp(5),0,dp(9));e.setLayoutParams(p);return e;}
+    LinearLayout root(){LinearLayout r=new LinearLayout(this);r.setOrientation(LinearLayout.VERTICAL);r.setPadding(dp(24),dp(24),dp(24),dp(30));r.setBackgroundColor(BG);return r;}
+    LinearLayout card(){LinearLayout c=new LinearLayout(this);c.setOrientation(LinearLayout.VERTICAL);c.setPadding(dp(20),dp(18),dp(20),dp(18));c.setBackground(bg(Color.WHITE,20));LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.setMargins(0,dp(7),0,dp(10));c.setLayoutParams(p);return c;}
+    void title(LinearLayout r,String h,String s){r.addView(t("AulaControl",31,true,DARK));TextView b=t("Seguridad institucional · Sesiones privadas y temporales",14,false,MUTED);b.setPadding(0,0,0,dp(18));r.addView(b);r.addView(t(h,27,true,INK));TextView y=t(s,14,false,MUTED);y.setPadding(0,dp(5),0,dp(12));r.addView(y);}
+    void toast(String s){Toast.makeText(this,s,Toast.LENGTH_SHORT).show();}
+
+    void setupUi(){
+        ScrollView sc=new ScrollView(this);LinearLayout r=root();sc.addView(r);
+        title(r,"Configurar dispositivo","Este paso se realiza una sola vez en el usuario institucional y queda protegido por la contraseña administrativa.");
+        EditText dn=input("Nombre del dispositivo · Ej. TABLET-08",false),key=input("Clave técnica del establecimiento",false),p1=input("Contraseña administrativa",true),p2=input("Repetir contraseña",true);
+        r.addView(dn);r.addView(key);r.addView(p1);r.addView(p2);
+        Button ok=btn("Activar AulaControl",GREEN);r.addView(ok);
+        TextView n=t("AulaControl no registra contraseñas personales. La clave técnica se cifra con Android Keystore y la contraseña administrativa se conserva únicamente como hash derivado.",12,false,MUTED);n.setPadding(0,dp(10),0,0);r.addView(n);
+        ok.setOnClickListener(v->{String d=dn.getText().toString().trim(),k=key.getText().toString().trim(),p=p1.getText().toString();if(d.length()<2||k.length()<10||p.length()<6){toast("Completa los datos requeridos");return;}if(!p.equals(p2.getText().toString())){toast("Las contraseñas no coinciden");return;}Core.setup(this,d,k,p);agent();route();});
+        setContentView(sc);
+    }
+
+    void guestBootstrapErrorUi(){
+        LinearLayout r=root();
+        title(r,"No se pudo preparar la sesión temporal","La configuración institucional no llegó completa a este usuario. Por seguridad no se permite configurar AulaControl aquí.");
+        LinearLayout c=card();c.addView(t("La sesión será cerrada",20,true,RED));c.addView(t("Vuelve al acceso principal e intenta crear la sesión nuevamente. Tus claves institucionales no deben ingresarse dentro de un usuario temporal.",14,false,MUTED));r.addView(c);
+        Button out=btn("Cerrar sesión temporal",ORANGE);r.addView(out);
+        out.setOnClickListener(v->{if(!SessionUsers.logoutGuest(this))toast("No fue posible cerrar automáticamente. Reinicia la tablet.");});
+        setContentView(r);
+    }
+
+    void managedRequiredUi(){
+        LinearLayout r=root();
+        title(r,"Administración del dispositivo pendiente","Para crear sesiones invitado reales y proteger las aplicaciones, esta tablet debe quedar aprovisionada como Device Owner.");
+        LinearLayout c=card();c.addView(t("🔒 Modo comercial protegido",20,true,DARK));c.addView(t("La instalación normal permite revisar la interfaz, pero las sesiones permanecen deshabilitadas hasta completar el aprovisionamiento institucional.",14,false,MUTED));r.addView(c);
+        setContentView(r);
+    }
+
+    void roleGate(){
+        ScrollView sc=new ScrollView(this);LinearLayout r=root();sc.addView(r);
+        title(r,"¿Quién utilizará este dispositivo?","Toda persona debe identificarse. Profesor y estudiante utilizan una sesión Android temporal; Administrador es un acceso separado protegido por clave.");
+        LinearLayout device=card();device.addView(t(Core.dn(this),19,true,DARK));device.addView(t("🔒 Dispositivo administrado · "+Core.id(this),13,false,GREEN));r.addView(device);
+        Button st=btn("🎓  Soy estudiante",GREEN),te=btn("◉  Soy profesor",DARK);r.addView(st);r.addView(te);
+        TextView priv=t("Tus datos de sesión se eliminan al finalizar. AulaControl supervisa la pantalla en vivo sin keylogging, sin grabación histórica y sin almacenar contraseñas personales.",13,false,MUTED);priv.setPadding(dp(3),dp(12),dp(3),dp(12));r.addView(priv);
+        Button ad=btn("⚙  Administración",ORANGE);r.addView(ad);
+        st.setOnClickListener(v->identityForm(Core.ROLE_STUDENT));te.setOnClickListener(v->identityForm(Core.ROLE_TEACHER));ad.setOnClickListener(v->askAdmin());
+        setContentView(sc);
+    }
+
+    void identityForm(String role){
+        ScrollView sc=new ScrollView(this);LinearLayout r=root();sc.addView(r);boolean teacher=Core.ROLE_TEACHER.equals(role);
+        title(r,teacher?"Sesión de profesor":"Sesión de estudiante",teacher?"Ingresa únicamente tu nombre y apellido.":"Ingresa tu nombre, apellido y curso.");
+        EditText name=input("Nombre y apellido",false);r.addView(name);EditText course=null;if(!teacher){course=input("Curso · Ej. 8° Básico",false);r.addView(course);}
+        Button go=btn("Crear sesión temporal",GREEN);r.addView(go);Button back=btn("Volver",DARK);r.addView(back);EditText finalCourse=course;
+        go.setOnClickListener(v->{String n=name.getText().toString().trim(),co=finalCourse==null?"":finalCourse.getText().toString().trim();if(n.length()<3||(!teacher&&co.isEmpty())){toast("Completa los datos de la sesión");return;}Managed.exitGate(this);if(!SessionUsers.createAndSwitch(this,role,n,co)){toast("No fue posible crear el usuario temporal");Managed.enterGate(this);}});
+        back.setOnClickListener(v->roleGate());setContentView(sc);
+    }
+
+    void guestUi(){
+        if(Core.adminMode(this)){adminPanel();return;}
+        if(Core.user(this).isEmpty()){
+            LinearLayout r=root();title(r,"Sesión temporal no válida","No se encontró identidad de sesión. Cierra este usuario para regresar al acceso institucional.");Button out=btn("Cerrar usuario temporal",ORANGE);r.addView(out);out.setOnClickListener(v->SessionUsers.logoutGuest(this));setContentView(r);return;
+        }
+        Managed.applyGuest(this);
+        if(!ScreenCaptureService.active){guestStartUi();return;}
+        sessionUi();
+    }
+
+    void guestStartUi(){
+        ScrollView sc=new ScrollView(this);LinearLayout r=root();sc.addView(r);
+        title(r,"Sesión lista para proteger","Antes de abrir el launcher Android, AulaControl debe confirmar la supervisión en vivo de esta sesión.");
+        LinearLayout c=card();c.addView(t(Core.user(this),23,true,DARK));c.addView(t(Core.roleLabel(this)+(Core.course(this).isEmpty()?"":" · "+Core.course(this)),15,true,GREEN));c.addView(t("🔒 Sesión privada y temporal",14,false,MUTED));r.addView(c);
+        Button go=btn("Iniciar sesión segura",GREEN);r.addView(go);
+        TextView p=t("La autorización de captura pertenece a Android. Si no se completa, el launcher no se habilita. La imagen se transmite en vivo a la consola autorizada y no se guarda por defecto.",13,false,MUTED);p.setPadding(0,dp(10),0,dp(10));r.addView(p);
+        Button admin=btn("Administración",ORANGE);r.addView(admin);Button out=btn("Cancelar y cerrar sesión",DARK);r.addView(out);
+        go.setOnClickListener(v->capture());admin.setOnClickListener(v->askAdmin());out.setOnClickListener(v->endGuest());setContentView(sc);
+    }
+
+    void capture(){captureAt=System.currentTimeMillis();MediaProjectionManager m=(MediaProjectionManager)getSystemService(MEDIA_PROJECTION_SERVICE);startActivityForResult(m.createScreenCaptureIntent(),CAP);}
+
+    @Override protected void onActivityResult(int rq,int rc,Intent data){
+        super.onActivityResult(rq,rc,data);
+        if(rq==CAP){
+            if(rc==RESULT_OK&&data!=null){Intent s=new Intent(this,ScreenCaptureService.class);s.putExtra("rc",rc);s.putExtra("data",data);if(Build.VERSION.SDK_INT>=26)startForegroundService(s);else startService(s);waitFrame();}
+            else guestStartUi();
+        }
+    }
+
+    void waitFrame(){
+        Runnable[] q=new Runnable[1];
+        q[0]=()->{if(ScreenCaptureService.active&&ScreenCaptureService.lastFrameAt>=captureAt){Core.touch(this);agent();openHome();return;}if(System.currentTimeMillis()-captureAt>9000){stopService(new Intent(this,ScreenCaptureService.class));new AlertDialog.Builder(this).setTitle("Supervisión no confirmada").setMessage("La sesión continuará bloqueada hasta recibir una imagen real.").setPositiveButton("Aceptar",(d,w)->guestStartUi()).show();return;}ui.postDelayed(q[0],250);};
+        ui.post(q[0]);
+    }
+
+    void sessionUi(){
+        ScrollView sc=new ScrollView(this);LinearLayout r=root();sc.addView(r);
+        title(r,"Sesión activa","Puedes volver al launcher original de Android. AulaControl permanece protegiendo y supervisando la sesión en segundo plano.");
+        LinearLayout c=card();c.addView(t(Core.user(this),23,true,DARK));c.addView(t(Core.roleLabel(this)+(Core.course(this).isEmpty()?"":" · "+Core.course(this)),15,true,GREEN));c.addView(t("● Supervisión activa · 🔒 Desinstalaciones bloqueadas",13,true,GREEN));r.addView(c);
+        Button home=btn("Abrir inicio de Android",GREEN),settings=btn("Abrir Ajustes",DARK),admin=btn("Administración",ORANGE),logout=btn("Cerrar sesión",RED);r.addView(home);r.addView(settings);r.addView(admin);r.addView(logout);
+        home.setOnClickListener(v->openHome());settings.setOnClickListener(v->{try{startActivity(new Intent(Settings.ACTION_SETTINGS));}catch(Exception ignored){}});admin.setOnClickListener(v->askAdmin());logout.setOnClickListener(v->confirmLogout());setContentView(sc);
+    }
+
+    void openHome(){try{startActivity(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));}catch(Exception e){toast("No se encontró launcher del sistema");}}
+    void confirmLogout(){new AlertDialog.Builder(this).setTitle("Cerrar sesión").setMessage("Se eliminará este usuario temporal y sus datos locales. Las cuentas que no hayas cerrado también desaparecerán del dispositivo.").setNegativeButton("Cancelar",null).setPositiveButton("Cerrar sesión",(d,w)->endGuest()).show();}
+    void endGuest(){stopService(new Intent(this,ScreenCaptureService.class));Core.clearIdentity(this);if(!SessionUsers.logoutGuest(this))toast("No fue posible cerrar automáticamente. Reinicia la tablet.");}
+
+    void askAdmin(){
+        EditText p=input("Contraseña administrativa",true);
+        new AlertDialog.Builder(this).setTitle("Acceso administrador").setView(p).setNegativeButton("Cancelar",null).setPositiveButton("Entrar",(d,w)->{
+            if(Core.checkPw(this,p.getText().toString())){
+                Core.adminMode(this,true);
+                if(Managed.owner(this))Managed.exitGate(this);
+                Managed.adminUnlock(this);
+                adminPanel();
+            }else toast("Clave incorrecta");
+        }).show();
+    }
+
+    void adminPanel(){
+        ScrollView sc=new ScrollView(this);LinearLayout r=root();sc.addView(r);
+        title(r,"Centro de administración","Modo de mantenimiento total. Las restricciones del usuario se relajan temporalmente hasta cerrar este panel.");
+        LinearLayout s=card();s.addView(t("🔓 Administración activa",20,true,ORANGE));s.addView(t("Puedes modificar Ajustes, instalar o desinstalar aplicaciones y cambiar la configuración de AulaControl. Las acciones críticas requieren confirmación.",14,false,MUTED));r.addView(s);
+        Button settings=btn("Abrir Ajustes completos de Android",DARK),store=btn("Abrir Play Store",GREEN),apps=btn("Administrar aplicaciones",DARK),cfg=btn("Configurar AulaControl",DARK),restore=btn("Cerrar administración y restaurar protección",GREEN);
+        r.addView(settings);r.addView(store);r.addView(apps);r.addView(cfg);
+        if(Managed.owner(this)){
+            Button clean=btn("Eliminar sesiones temporales residuales",ORANGE),release=btn("Liberar Device Owner",RED);r.addView(clean);r.addView(release);
+            clean.setOnClickListener(v->{SessionUsers.cleanupSecondaryUsers(this);toast("Limpieza solicitada");});release.setOnClickListener(v->confirmRelease());
+        }
+        r.addView(restore);
+        settings.setOnClickListener(v->{try{startActivity(new Intent(Settings.ACTION_SETTINGS));}catch(Exception ignored){}});
+        store.setOnClickListener(v->{try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse("market://details?id="+getPackageName())));}catch(Exception e){try{startActivity(new Intent(Settings.ACTION_APPLICATION_SETTINGS));}catch(Exception ignored){}}});
+        apps.setOnClickListener(v->{try{startActivity(new Intent(Settings.ACTION_APPLICATION_SETTINGS));}catch(Exception ignored){}});
+        cfg.setOnClickListener(v->configUi());restore.setOnClickListener(v->closeAdmin());setContentView(sc);
+    }
+
+    void configUi(){
+        ScrollView sc=new ScrollView(this);LinearLayout r=root();sc.addView(r);
+        title(r,"Configuración de AulaControl","Modifica los parámetros técnicos de este usuario administrado.");
+        EditText dn=input("Nombre del dispositivo",false);dn.setText(Core.dn(this));EditText key=input("Clave técnica",false);key.setText(Core.key(this));EditText pw=input("Nueva contraseña administrativa · opcional",true);r.addView(dn);r.addView(key);r.addView(pw);
+        Button save=btn("Guardar cambios",GREEN),back=btn("Volver",DARK);r.addView(save);r.addView(back);
+        save.setOnClickListener(v->{if(dn.getText().toString().trim().length()<2||key.getText().toString().trim().length()<10){toast("Revisa los campos");return;}Core.config(this,dn.getText().toString(),key.getText().toString(),pw.getText().toString());toast("Configuración guardada");adminPanel();});back.setOnClickListener(v->adminPanel());setContentView(sc);
+    }
+
+    void closeAdmin(){Core.adminMode(this,false);Managed.restoreProtection(this);if(Managed.owner(this))Managed.enterGate(this);route();}
+
+    void confirmRelease(){
+        EditText p=input("Repite la contraseña administrativa",true);
+        new AlertDialog.Builder(this).setTitle("Liberar administración del dispositivo").setMessage("Esta acción reduce la protección institucional y no puede deshacerse sin volver a aprovisionar la tablet.").setView(p).setNegativeButton("Cancelar",null).setPositiveButton("Liberar",(d,w)->{
+            if(Core.checkPw(this,p.getText().toString())){
+                if(Managed.release(this)){Core.adminMode(this,false);toast("Device Owner liberado");route();}
+                else toast("No fue posible liberar Device Owner");
+            }else toast("Clave incorrecta");
+        }).show();
+    }
+
+    void agent(){try{Intent i=new Intent(this,AgentService.class);if(Build.VERSION.SDK_INT>=26)startForegroundService(i);else startService(i);}catch(Exception ignored){}}
 }
