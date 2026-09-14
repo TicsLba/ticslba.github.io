@@ -92,10 +92,10 @@ public class MainWindow : Window
         left.Children.Add(new Border { Background = Brushes.White, CornerRadius = new CornerRadius(16), Padding = new Thickness(8), Child = Logo() });
         var titles = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(16, 0, 0, 0) };
         titles.Children.Add(new TextBlock { Text = "AulaControl", Foreground = Brushes.White, FontSize = 31, FontWeight = FontWeights.Bold });
-        titles.Children.Add(new TextBlock { Text = "Consola docente · Supervisión continua", Foreground = new SolidColorBrush(Color.FromRgb(204, 231, 218)), FontSize = 14 });
+        titles.Children.Add(new TextBlock { Text = "Consola docente · Supervisión continua cifrada", Foreground = new SolidColorBrush(Color.FromRgb(204, 231, 218)), FontSize = 14 });
         left.Children.Add(titles); hg.Children.Add(left);
         var right = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-        right.Children.Add(new Border { Background = new SolidColorBrush(Color.FromRgb(19, 108, 73)), CornerRadius = new CornerRadius(12), Padding = new Thickness(12, 7, 12, 7), Margin = new Thickness(0, 0, 10, 0), Child = new TextBlock { Text = "AulaControl 1.1.1 Strict", Foreground = Brushes.White, FontWeight = FontWeights.SemiBold } });
+        right.Children.Add(new Border { Background = new SolidColorBrush(Color.FromRgb(19, 108, 73)), CornerRadius = new CornerRadius(12), Padding = new Thickness(12, 7, 12, 7), Margin = new Thickness(0, 0, 10, 0), Child = new TextBlock { Text = "AulaControl 1.2 Managed Guest", Foreground = Brushes.White, FontWeight = FontWeights.SemiBold } });
         right.Children.Add(B("⚙  Configuración", (_, _) => ConfigDialog(), Orange)); Grid.SetColumn(right, 1); hg.Children.Add(right); head.Child = hg; root.Children.Add(head);
         root.Children.Add(new Border { Background = Orange, Height = 4, VerticalAlignment = VerticalAlignment.Bottom });
 
@@ -151,7 +151,7 @@ public class MainWindow : Window
         discovery?.Dispose(); devices.Clear(); wall.Children.Clear(); wallImages.Clear(); wallStatus.Clear(); wallSignature = "";
         registry = new Registry(settings.Key); foreach (var x in registry.Load()) devices.Add(x);
         commands = new Commands(settings.Key); discovery = new Discovery(settings.Key); discovery.Seen += Incoming;
-        try { discovery.Start(); footer.Text = "● Consola activa · las sesiones válidas aparecerán automáticamente en Pantallas en vivo"; }
+        try { discovery.Start(); footer.Text = "● Consola activa · identidad, comandos y pantallas protegidos en la red local"; }
         catch (Exception e) { footer.Text = "No se pudo abrir UDP 45888: " + e.Message; }
         RefreshStats(); _ = RefreshWall();
     }
@@ -225,8 +225,8 @@ public class MainWindow : Window
             using var q = new HttpRequestMessage(HttpMethod.Get, $"http://{d.Ip}:{d.ScreenPort}/screen.jpg");
             q.Headers.Add("X-Timestamp", ts.ToString()); q.Headers.Add("X-Signature", AcCrypto.Hmac(settings.Key, $"SCREEN\n{ts}"));
             var r = await http.SendAsync(q); if (!r.IsSuccessStatusCode) { st.Text = $"● {d.Person} · esperando cuadro…"; st.Foreground = Orange; return; }
-            byte[] z = await r.Content.ReadAsByteArrayAsync(); using var ms = new MemoryStream(z); var bi = new BitmapImage(); bi.BeginInit(); bi.CacheOption = BitmapCacheOption.OnLoad; bi.DecodePixelWidth = 300; bi.StreamSource = ms; bi.EndInit(); bi.Freeze(); im.Source = bi;
-            st.Text = $"● EN VIVO · {d.Person}{(string.IsNullOrWhiteSpace(d.Course) ? "" : " · " + d.Course)}"; st.Foreground = Green;
+            byte[] z = AcCrypto.Open(settings.Key, await r.Content.ReadAsByteArrayAsync()); using var ms = new MemoryStream(z); var bi = new BitmapImage(); bi.BeginInit(); bi.CacheOption = BitmapCacheOption.OnLoad; bi.DecodePixelWidth = 300; bi.StreamSource = ms; bi.EndInit(); bi.Freeze(); im.Source = bi;
+            st.Text = $"● EN VIVO · {d.Person}{(string.IsNullOrWhiteSpace(d.Course) ? "" : " · " + d.Course)} · cifrado"; st.Foreground = Green;
         }
         catch { st.Text = $"● {d.Person} · reconectando…"; st.Foreground = Orange; }
     }
