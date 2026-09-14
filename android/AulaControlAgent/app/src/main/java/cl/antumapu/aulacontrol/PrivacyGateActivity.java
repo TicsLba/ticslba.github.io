@@ -22,6 +22,6 @@ public class PrivacyGateActivity extends Activity{
   Button ok=new Button(this);ok.setText("Entendido · continuar");ok.setTextColor(Color.WHITE);ok.setTextSize(16);ok.setTypeface(null,1);ok.setAllCaps(false);ok.setBackground(bg(GREEN,14));ok.setPadding(dp(16),dp(13),dp(16),dp(13));LinearLayout.LayoutParams bp=new LinearLayout.LayoutParams(-1,-2);bp.setMargins(0,dp(18),0,dp(6));root.addView(ok,bp);ok.setOnClickListener(v->{getPreferences(MODE_PRIVATE).edit().putBoolean(ACCEPT,true).apply();go();});
   TextView foot=t("AulaControl 1.2 · Desarrollado por Eduardo Pérez González",12,false,MUTED);foot.setGravity(Gravity.CENTER);foot.setPadding(0,dp(12),0,0);root.addView(foot);setContentView(sc);}
  void add(LinearLayout c,String title,String body){TextView a=t(title,16,true,DARK);a.setPadding(0,dp(9),0,dp(3));c.addView(a);TextView b=t(body,14,false,MUTED);b.setLineSpacing(0,1.08f);c.addView(b);}
- void go(){Intent i=new Intent(this,MainActivity.class);i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP);startActivity(i);finish();}
+ void go(){Class<?> target=GuestSession.requiresIntervention(this)?CleanupRecoveryActivity.class:MainActivity.class;Intent i=new Intent(this,target);i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP);startActivity(i);finish();}
  @Override public void onBackPressed(){if(getPreferences(MODE_PRIVATE).getBoolean(ACCEPT,false))super.onBackPressed();}
 }
