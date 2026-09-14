@@ -1,5 +1,5 @@
-# AulaControl 1.3 Commercial build · final candidate
-name: AulaControl 1.3 Commercial Build
+# AulaControl 1.3.1 hardware-fix build
+name: AulaControl 1.3.1 Hardware Fix Build
 
 on:
   push:
@@ -25,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: aulacontrol-v1-3-commercial
+          ref: aulacontrol-v1-3-1-hardware-fix
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -38,7 +38,7 @@ jobs:
         run: gradle --no-daemon :app:assembleDebug :app:assembleRelease
       - uses: actions/upload-artifact@v4
         with:
-          name: AulaControl-Android-1.3.0
+          name: AulaControl-Android-1.3.1
           path: |
             android/AulaControlAgent/app/build/outputs/apk/debug/app-debug.apk
             android/AulaControlAgent/app/build/outputs/apk/release/app-release-unsigned.apk
@@ -48,10 +48,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: aulacontrol-v1-3-commercial
+          ref: aulacontrol-v1-3-1-hardware-fix
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+      - name: Align visible product version
+        shell: pwsh
+        run: |
+          $p = '.\windows\AulaControlTeacher\MainWindow.cs'
+          $c = Get-Content $p -Raw
+          $c = $c.Replace('AulaControl 1.3 Commercial','AulaControl 1.3.1 Commercial')
+          Set-Content $p $c -Encoding utf8
       - name: Build Windows
         shell: pwsh
         run: dotnet publish .\windows\AulaControlTeacher\AulaControlTeacher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o .\dist\windows
@@ -73,5 +80,5 @@ jobs:
           Remove-Item .\windows-signing.pfx -Force
       - uses: actions/upload-artifact@v4
         with:
-          name: AulaControl-Windows-1.3.0
+          name: AulaControl-Windows-1.3.1
           path: dist/windows/**
