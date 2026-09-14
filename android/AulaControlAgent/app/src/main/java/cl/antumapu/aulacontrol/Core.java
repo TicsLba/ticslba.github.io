@@ -7,14 +7,16 @@ final class Core {
  static final String P="aulacontrol"; private Core(){}
  static android.content.SharedPreferences sp(Context c){return c.getSharedPreferences(P,Context.MODE_PRIVATE);} 
  static String id(Context c){var s=sp(c);String v=s.getString("id","");if(!v.isEmpty())return v;String a="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";var r=new SecureRandom();var b=new StringBuilder("TAB-");for(int i=0;i<8;i++)b.append(a.charAt(r.nextInt(a.length())));v=b.toString();s.edit().putString("id",v).apply();return v;}
- static String dn(Context c){return sp(c).getString("dn","");} static String key(Context c){return sp(c).getString("key","");} static String user(Context c){return sp(c).getString("user","");} static String course(Context c){return sp(c).getString("course","");}
+ static String dn(Context c){return sp(c).getString("dn","");}
+ static String key(Context c){var s=sp(c);String enc=s.getString("key_enc","");if(!enc.isEmpty()){String d=Secrets.decrypt(enc);if(!d.isEmpty())return d;}String legacy=s.getString("key","");if(!legacy.isEmpty()){String e=Secrets.encrypt(legacy);if(!e.isEmpty())s.edit().putString("key_enc",e).remove("key").apply();return legacy;}return "";}
+ static String user(Context c){return sp(c).getString("user","");} static String course(Context c){return sp(c).getString("course","");}
  static boolean ready(Context c){var s=sp(c);return !dn(c).isEmpty()&&!key(c).isEmpty()&&!s.getString("salt","").isEmpty()&&!s.getString("hash","").isEmpty();}
- static void setup(Context c,String dn,String key,String pw){String salt=salt(),hash=hash(pw,salt);sp(c).edit().putString("dn",dn.trim()).putString("key",key.trim()).putString("salt",salt).putString("hash",hash).apply();}
- static void config(Context c,String dn,String key,String pw){var e=sp(c).edit().putString("dn",dn.trim()).putString("key",key.trim());if(!pw.isEmpty()){String s=salt();e.putString("salt",s).putString("hash",hash(pw,s));}e.apply();}
+ static void setup(Context c,String dn,String key,String pw){String salt=salt(),hash=hash(pw,salt),enc=Secrets.encrypt(key.trim());sp(c).edit().putString("dn",dn.trim()).putString("key_enc",enc).remove("key").putString("salt",salt).putString("hash",hash).apply();}
+ static void config(Context c,String dn,String key,String pw){String enc=Secrets.encrypt(key.trim());var e=sp(c).edit().putString("dn",dn.trim()).putString("key_enc",enc).remove("key");if(!pw.isEmpty()){String s=salt();e.putString("salt",s).putString("hash",hash(pw,s));}e.apply();}
  static boolean checkPw(Context c,String pw){var s=sp(c);return eq(s.getString("hash",""),hash(pw,s.getString("salt","")));}
  static void login(Context c,String u,String co){sp(c).edit().putString("user",u.trim()).putString("course",co.trim()).putLong("last",System.currentTimeMillis()).apply();}
  static void touch(Context c){sp(c).edit().putLong("last",System.currentTimeMillis()).apply();} static long last(Context c){return sp(c).getLong("last",System.currentTimeMillis());}
- static void logout(Context c){sp(c).edit().remove("user").remove("course").remove("last").apply();}
+ static void logout(Context c){sp(c).edit().remove("user").remove("course").remove("last").apply();GuestSession.begin(c);}
  static String salt(){byte[] b=new byte[16];new SecureRandom().nextBytes(b);return Base64.encodeToString(b,Base64.NO_WRAP);} 
  static String hash(String pw,String salt){try{var spec=new PBEKeySpec(pw.toCharArray(),Base64.decode(salt,Base64.NO_WRAP),120000,256);byte[] b=SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).getEncoded();return Base64.encodeToString(b,Base64.NO_WRAP);}catch(Exception e){return "";}}
  static String hmac(String key,String data){try{Mac m=Mac.getInstance("HmacSHA256");m.init(new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8),"HmacSHA256"));return hex(m.doFinal(data.getBytes(StandardCharsets.UTF_8)));}catch(Exception e){return "";}}
