@@ -19,6 +19,7 @@ final class GuestSession {
     private static final String PREF = "aulacontrol_guest";
     private static final String CLEANING = "cleaning";
     private static final String STATUS = "status";
+    private static final String LAST_OK = "last_ok";
     private static final Set<String> ALWAYS_CLEAN = new HashSet<>(Arrays.asList(
             "com.android.chrome","com.google.android.gm","com.google.android.apps.docs",
             "com.sec.android.app.sbrowser","org.mozilla.firefox","com.microsoft.emmx",
@@ -29,36 +30,43 @@ final class GuestSession {
     private static android.content.SharedPreferences sp(Context c){return c.getSharedPreferences(PREF,Context.MODE_PRIVATE);}
     static boolean cleaning(Context c){return sp(c).getBoolean(CLEANING,false);}
     static String status(Context c){return sp(c).getString(STATUS,"Preparando una sesión limpia…");}
+    static boolean lastCleanupOk(Context c){return sp(c).getBoolean(LAST_OK,true);}
+    static boolean requiresIntervention(Context c){return Managed.owner(c)&&Build.VERSION.SDK_INT>=28&&!lastCleanupOk(c);}
     static String capability(Context c){
         if(!Managed.owner(c)) return "Protección parcial";
-        return Build.VERSION.SDK_INT>=28 ? "Modo invitado completo" : "Modo invitado compatible";
+        return Build.VERSION.SDK_INT>=28 ? "Modo invitado reforzado" : "Modo invitado compatible";
     }
 
     static void begin(Context c){
         Context app=c.getApplicationContext();
         if(cleaning(app)) return;
-        sp(app).edit().putBoolean(CLEANING,true).putString(STATUS,"Cerrando sesión y eliminando datos temporales…").apply();
+        sp(app).edit().putBoolean(CLEANING,true).putBoolean(LAST_OK,true).putString(STATUS,"Cerrando sesión y eliminando datos temporales…").apply();
         clearLocal(app);
-        if(Build.VERSION.SDK_INT<28 || !Managed.owner(app)){
-            new Handler(Looper.getMainLooper()).postDelayed(()->finish(app),700);
+        if(!Managed.owner(app)){
+            new Handler(Looper.getMainLooper()).postDelayed(()->finish(app,true,"Sesión local restablecida · protección parcial"),700);
+            return;
+        }
+        if(Build.VERSION.SDK_INT<28){
+            new Handler(Looper.getMainLooper()).postDelayed(()->finish(app,true,"Sesión restablecida · Android 8 modo compatible"),700);
             return;
         }
         Set<String> packages=packagesToClear(app);
-        if(packages.isEmpty()){finish(app);return;}
+        if(packages.isEmpty()){finish(app,true,"Sesión restablecida");return;}
         DevicePolicyManager d=Managed.dpm(app);
         AtomicInteger left=new AtomicInteger(packages.size());
         AtomicInteger ok=new AtomicInteger();
+        AtomicInteger failed=new AtomicInteger();
         ExecutorService ex=Executors.newFixedThreadPool(Math.min(3,Math.max(1,packages.size())));
         Handler main=new Handler(Looper.getMainLooper());
-        main.postDelayed(()->{if(cleaning(app))finish(app);},18000);
+        main.postDelayed(()->{if(cleaning(app)){try{ex.shutdownNow();}catch(Exception ignored){}finish(app,false,"No se pudo confirmar la limpieza completa. Reintenta antes de otro usuario.");}},18000);
         for(String p:packages){
             try{
                 d.clearApplicationUserData(Managed.admin(app),p,ex,(pkg,succeeded)->{
-                    if(succeeded)ok.incrementAndGet();
-                    sp(app).edit().putString(STATUS,"Restableciendo aplicaciones · "+ok.get()+" completadas").apply();
-                    if(left.decrementAndGet()==0){ex.shutdown();main.post(()->finish(app));}
+                    if(succeeded)ok.incrementAndGet(); else failed.incrementAndGet();
+                    sp(app).edit().putString(STATUS,"Restableciendo aplicaciones · "+ok.get()+" correctas · "+failed.get()+" pendientes").apply();
+                    if(left.decrementAndGet()==0){ex.shutdown();boolean success=failed.get()==0;main.post(()->finish(app,success,success?"Sesión restablecida":"Una o más aplicaciones no pudieron restablecerse. Reintenta la limpieza."));}
                 });
-            }catch(Exception e){if(left.decrementAndGet()==0){ex.shutdown();main.post(()->finish(app));}}
+            }catch(Exception e){failed.incrementAndGet();if(left.decrementAndGet()==0){ex.shutdown();main.post(()->finish(app,false,"Una o más aplicaciones no pudieron restablecerse. Reintenta la limpieza."));}}
         }
     }
 
@@ -92,8 +100,9 @@ final class GuestSession {
         return p.contains("packageinstaller")||p.contains("permissioncontroller")||p.contains("inputmethod");
     }
 
-    private static void finish(Context c){
-        sp(c).edit().putBoolean(CLEANING,false).putString(STATUS,"Sesión restablecida").apply();
+    private static void finish(Context c,boolean ok,String text){
+        if(!cleaning(c))return;
+        sp(c).edit().putBoolean(CLEANING,false).putBoolean(LAST_OK,ok).putString(STATUS,text).apply();
         Intent i=new Intent(c,PrivacyGateActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP);
         try{c.startActivity(i);}catch(Exception ignored){}
     }
