@@ -15,5 +15,6 @@ final class Managed{
  static void adminUnlock(Context c){if(!managed(c))return;try{DevicePolicyManager d=dpm(c);ComponentName a=admin(c);restriction(d,a,UserManager.DISALLOW_UNINSTALL_APPS,false);restriction(d,a,UserManager.DISALLOW_INSTALL_APPS,false);restriction(d,a,UserManager.DISALLOW_APPS_CONTROL,false);restriction(d,a,UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES,false);restriction(d,a,UserManager.DISALLOW_DEBUGGING_FEATURES,false);restriction(d,a,UserManager.DISALLOW_FACTORY_RESET,false);d.setUninstallBlocked(a,c.getPackageName(),false);try{d.setStatusBarDisabled(a,false);}catch(Exception ignored){}}catch(Exception ignored){}}
  static void restoreProtection(Context c){Core.adminMode(c,false);apply(c);}
  static void exitGate(Activity a){try{a.stopLockTask();}catch(Exception ignored){}}
+ static void enter(Activity a){enterGate(a);} static void exit(Activity a){exitGate(a);adminUnlock(a);}
  @SuppressWarnings("deprecation") static boolean release(Context c){if(!owner(c))return false;try{adminUnlock(c);DevicePolicyManager d=dpm(c);ComponentName a=admin(c);d.clearPackagePersistentPreferredActivities(a,c.getPackageName());d.clearDeviceOwnerApp(c.getPackageName());return true;}catch(Exception e){return false;}}
 }
