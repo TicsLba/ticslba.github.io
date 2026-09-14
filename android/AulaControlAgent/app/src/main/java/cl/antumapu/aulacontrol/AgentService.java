@@ -1,6 +1,6 @@
 package cl.antumapu.aulacontrol;
 
-import android.app.*;import android.content.*;import android.net.Uri;import android.os.*;import org.json.JSONObject;import java.io.*;import java.net.*;import java.nio.charset.StandardCharsets;import java.util.concurrent.*;
+import android.app.*;import android.content.*;import android.net.Uri;import android.os.*;import android.widget.Toast;import org.json.JSONObject;import java.io.*;import java.net.*;import java.nio.charset.StandardCharsets;import java.util.concurrent.*;
 
 public class AgentService extends Service{
  static final int UDP=45888,CMD=45901;static final long WARN=30_000L;static final String KEEP="AC_KEEP",LOGOUT="AC_LOGOUT";volatile boolean run,warn;ScheduledExecutorService ex;ServerSocket commandSocket;Handler ui=new Handler(Looper.getMainLooper());Runnable autoLogout=()->logout();
