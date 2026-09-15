@@ -43,15 +43,23 @@ final class Core {
     static boolean adminMode(Context c){return sp(c).getBoolean("admin_mode",false);}
     static boolean privacyAccepted(Context c){return sp(c).getBoolean("privacy_ack",false);}
     static void privacyAccepted(Context c,boolean v){sp(c).edit().putBoolean("privacy_ack",v).apply();}
+    static boolean supervisionStarted(Context c){return sp(c).getBoolean("supervision_started",false);}
+    static void supervisionStarted(Context c,boolean v){sp(c).edit().putBoolean("supervision_started",v).apply();}
 
     static boolean ready(Context c){
+        if(guest(c)){
+            String r=role(c);
+            return !dn(c).isEmpty()&&!key(c).isEmpty()&&!user(c).isEmpty()&&
+                    (ROLE_STUDENT.equals(r)||ROLE_TEACHER.equals(r));
+        }
         var s=sp(c);
         return !dn(c).isEmpty()&&!key(c).isEmpty()&&!s.getString("salt","").isEmpty()&&!s.getString("hash","").isEmpty();
     }
 
     static void setup(Context c,String dn,String key,String pw){
         String salt=salt(),hash=hash(pw,salt);
-        sp(c).edit().putString("dn",dn.trim()).putString("key_enc",Secrets.encrypt(key.trim())).remove("key")
+        sp(c).edit().putBoolean("guest_session",false).putBoolean("supervision_started",false)
+                .putString("dn",dn.trim()).putString("key_enc",Secrets.encrypt(key.trim())).remove("key")
                 .putString("salt",salt).putString("hash",hash).putBoolean("privacy_ack",true).apply();
     }
 
@@ -62,7 +70,7 @@ final class Core {
         if(b==null){
             b=new PersistableBundle();
             copy(intent,b,K_ROLE);copy(intent,b,K_NAME);copy(intent,b,K_COURSE);copy(intent,b,K_DEVICE_NAME);
-            copy(intent,b,K_DEVICE_ID);copy(intent,b,K_KEY);copy(intent,b,K_ADMIN_SALT);copy(intent,b,K_ADMIN_HASH);copy(intent,b,K_AFFILIATION);
+            copy(intent,b,K_DEVICE_ID);copy(intent,b,K_KEY);copy(intent,b,K_AFFILIATION);
         }
         setupGuest(c,b);
     }
@@ -76,23 +84,23 @@ final class Core {
         String technical=b.getString(K_KEY,"");
         String deviceName=b.getString(K_DEVICE_NAME,"");
         String deviceId=b.getString(K_DEVICE_ID,"");
-        String salt=b.getString(K_ADMIN_SALT,"");
-        String hash=b.getString(K_ADMIN_HASH,"");
         String role=b.getString(K_ROLE,ROLE_STUDENT);
         String name=b.getString(K_NAME,"");
         String course=b.getString(K_COURSE,"");
 
-        // Si faltan los datos críticos, no dejamos una sesión aparentemente válida.
-        if(technical.isEmpty()||deviceName.isEmpty()||deviceId.isEmpty()||salt.isEmpty()||hash.isEmpty()||name.isEmpty())return;
+        // El usuario temporal recibe únicamente los datos necesarios para su sesión.
+        // La contraseña/hash de administración permanece exclusivamente en Propietario.
+        if(technical.isEmpty()||deviceName.isEmpty()||deviceId.isEmpty()||name.isEmpty())return;
+        if(!ROLE_STUDENT.equals(role)&&!ROLE_TEACHER.equals(role))return;
 
         sp(c).edit()
                 .putBoolean("guest_session",true)
                 .putBoolean("privacy_ack",true)
+                .putBoolean("supervision_started",false)
                 .putString("dn",deviceName)
                 .putString("id",deviceId)
                 .putString("key_enc",Secrets.encrypt(technical))
-                .putString("salt",salt)
-                .putString("hash",hash)
+                .remove("salt").remove("hash")
                 .putString("role",role)
                 .putString("user_enc",Secrets.encrypt(name))
                 .putString("course_enc",Secrets.encrypt(course))
@@ -109,7 +117,11 @@ final class Core {
 
     static String adminSalt(Context c){return sp(c).getString("salt","");}
     static String adminHash(Context c){return sp(c).getString("hash","");}
-    static boolean checkPw(Context c,String pw){var s=sp(c);return eq(s.getString("hash",""),hash(pw,s.getString("salt","")));}
+    static boolean checkPw(Context c,String pw){
+        var s=sp(c);String salt=s.getString("salt",""),stored=s.getString("hash","");
+        if(salt.isEmpty()||stored.isEmpty())return false;
+        return eq(stored,hash(pw,salt));
+    }
 
     static void login(Context c,String u,String co,String role){
         sp(c).edit().putString("user_enc",Secrets.encrypt(u.trim())).putString("course_enc",Secrets.encrypt(co==null?"":co.trim()))
@@ -117,7 +129,8 @@ final class Core {
     }
 
     static void clearIdentity(Context c){
-        sp(c).edit().remove("user_enc").remove("course_enc").remove("user").remove("course").remove("role").remove("last").remove("admin_mode").apply();
+        sp(c).edit().remove("user_enc").remove("course_enc").remove("user").remove("course").remove("role")
+                .remove("last").remove("admin_mode").remove("supervision_started").apply();
     }
 
     static void touch(Context c){sp(c).edit().putLong("last",System.currentTimeMillis()).apply();}
