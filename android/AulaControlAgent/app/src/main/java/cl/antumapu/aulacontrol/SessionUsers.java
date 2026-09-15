@@ -22,8 +22,6 @@ final class SessionUsers {
             ex.putString(Core.K_DEVICE_NAME,Core.dn(c));
             ex.putString(Core.K_DEVICE_ID,Core.id(c));
             ex.putString(Core.K_KEY,Core.key(c));
-            ex.putString(Core.K_ADMIN_SALT,Core.adminSalt(c));
-            ex.putString(Core.K_ADMIN_HASH,Core.adminHash(c));
             ex.putString(Core.K_AFFILIATION,AFFILIATION);
 
             int flags=DevicePolicyManager.SKIP_SETUP_WIZARD|DevicePolicyManager.LEAVE_ALL_SYSTEM_APPS_ENABLED;
@@ -57,7 +55,6 @@ final class SessionUsers {
         if(!Managed.owner(c)||Build.VERSION.SDK_INT<28)return;
         try{
             DevicePolicyManager d=Managed.dpm(c);
-            // Primero aseguramos que el usuario principal esté al frente.
             try{d.switchUser(Managed.admin(c),null);}catch(Exception ignored){}
             for(UserHandle u:d.getSecondaryUsers(Managed.admin(c))){
                 try{d.stopUser(Managed.admin(c),u);}catch(Exception ignored){}
