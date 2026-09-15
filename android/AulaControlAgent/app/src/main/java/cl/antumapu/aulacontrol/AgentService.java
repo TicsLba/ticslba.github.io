@@ -50,7 +50,18 @@ public class AgentService extends Service{
 
  void idle(){
   if(Core.user(this).isEmpty()||Core.adminMode(this)||!Core.guest(this)){if(warn)cancelWarning();return;}
-  if(!ScreenCaptureService.active){ui.post(this::logout);return;}
+
+  // Al crear un usuario temporal Android arranca AgentService ANTES de que el
+  // usuario pueda aceptar MediaProjection. 1.3.1 interpretaba esos primeros
+  // segundos como una pérdida de supervisión y hacía logout inmediatamente.
+  // Ahora la ausencia de captura sólo es crítica DESPUÉS de haber confirmado
+  // al menos un cuadro real de la sesión.
+  if(!ScreenCaptureService.active){
+   if(Core.supervisionStarted(this))ui.post(this::logout);
+   else if(warn)cancelWarning();
+   return;
+  }
+
   if(warn)return;
   long last=Core.activity(this);
   if(last>Core.last(this))Core.sp(this).edit().putLong("last",last).apply();
@@ -113,7 +124,7 @@ public class AgentService extends Service{
  void beacon(){try{
   String k=Core.key(this);if(k.isEmpty())return;String ip=Core.ip();int bat=battery();long ts=System.currentTimeMillis();boolean managed=Managed.managed(this);long frameAge=ScreenCaptureService.lastFrameAt>0?Math.max(0,ts-ScreenCaptureService.lastFrameAt):-1;
   String ue=Core.sealText(k,Core.user(this)),ce=Core.sealText(k,Core.course(this)),re=Core.sealText(k,Core.role(this));
-  JSONObject j=new JSONObject();j.put("type","AULACONTROL_BEACON");j.put("version",6);j.put("schoolTag",Core.sha(k).substring(0,12));j.put("deviceId",Core.id(this));j.put("deviceName",Core.dn(this));j.put("userEnc",ue);j.put("courseEnc",ce);j.put("roleEnc",re);j.put("model",Build.MANUFACTURER+" "+Build.MODEL);j.put("android",Build.VERSION.RELEASE);j.put("ip",ip);j.put("commandPort",CMD);j.put("screenPort",ScreenCaptureService.PORT);j.put("screenSharing",ScreenCaptureService.active);j.put("managed",managed);j.put("frameAge",frameAge);j.put("battery",bat);j.put("ts",ts);
+  JSONObject j=new JSONObject();j.put("type","AULACONTROL_BEACON");j.put("version",7);j.put("schoolTag",Core.sha(k).substring(0,12));j.put("deviceId",Core.id(this));j.put("deviceName",Core.dn(this));j.put("userEnc",ue);j.put("courseEnc",ce);j.put("roleEnc",re);j.put("model",Build.MANUFACTURER+" "+Build.MODEL);j.put("android",Build.VERSION.RELEASE);j.put("ip",ip);j.put("commandPort",CMD);j.put("screenPort",ScreenCaptureService.PORT);j.put("screenSharing",ScreenCaptureService.active);j.put("managed",managed);j.put("frameAge",frameAge);j.put("battery",bat);j.put("ts",ts);
   String d=Core.id(this)+"\n"+Core.dn(this)+"\n"+ue+"\n"+ce+"\n"+re+"\n"+ip+"\n"+CMD+"\n"+ScreenCaptureService.PORT+"\n"+ScreenCaptureService.active+"\n"+managed+"\n"+frameAge+"\n"+bat+"\n"+ts;
   j.put("sig",Core.hmac(k,d));byte[] z=j.toString().getBytes(StandardCharsets.UTF_8);DatagramSocket s=new DatagramSocket();s.setBroadcast(true);for(InetAddress a:Core.broadcasts())try{s.send(new DatagramPacket(z,z.length,a,UDP));}catch(Exception ignored){}s.close();
  }catch(Exception ignored){}}
