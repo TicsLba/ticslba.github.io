@@ -77,8 +77,6 @@ public class AgentService extends Service{
           lp=PendingIntent.getService(this,202,lo,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
   String mins=Core.ROLE_TEACHER.equals(Core.role(this))?"30 minutos":"10 minutos";
 
-  // Se actualiza LA MISMA notificación persistente de sesión. Android realiza
-  // el countdown del cronómetro; no se generan 30 notificaciones distintas.
   Notification.Builder b=builder("agent",NotificationManager.IMPORTANCE_HIGH)
           .setContentTitle("Cierre automático de sesión")
           .setContentText("Sin actividad durante "+mins)
@@ -112,9 +110,13 @@ public class AgentService extends Service{
 
  void logout(){
   warn=false;ui.removeCallbacks(autoLogout);
+  boolean guest=Core.guest(this);
+  // Primero invalidamos la identidad/supervisión para que detener MediaProjection
+  // sea interpretado como un cierre voluntario y no como una segunda caída.
+  Core.clearIdentity(this);
   stopService(new Intent(this,ScreenCaptureService.class));
-  Core.clearIdentity(this);beacon();
-  if(Core.guest(this)){
+  beacon();
+  if(guest){
    if(!SessionUsers.logoutGuest(this)){
     try{startActivity(new Intent(this,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TOP));}catch(Exception ignored){}
    }
