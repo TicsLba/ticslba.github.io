@@ -32,20 +32,17 @@ public class MainActivity extends Activity {
     @Override public void onUserInteraction(){super.onUserInteraction();if(Core.guest(this)&&!Core.user(this).isEmpty())Core.touch(this);}
 
     @Override public void onBackPressed(){
-        if(Core.adminMode(this)){closeAdmin();return;}
+        if(Managed.owner(this)&&Core.adminMode(this)){closeAdmin();return;}
         if(Managed.profileOwner(this)&&ScreenCaptureService.active){openHome();return;}
         route();
     }
 
     void route(){
-        // En un usuario temporal nunca permitimos configurar una segunda copia de
-        // AulaControl. Si el bootstrap falló, se cierra esa sesión y se vuelve al
-        // usuario institucional.
+        // En un usuario temporal nunca se muestra configuración institucional ni
+        // administración. Debe existir un bootstrap válido entregado por el Owner.
         if(Managed.profileOwner(this)){
             if(!Core.ready(this)){guestBootstrapErrorUi();return;}
-            agent();Managed.applyGuest(this);
-            if(Core.adminMode(this)){adminPanel();return;}
-            guestUi();return;
+            agent();Managed.applyGuest(this);guestUi();return;
         }
 
         if(!Core.ready(this)){setupUi();return;}
@@ -74,7 +71,7 @@ public class MainActivity extends Activity {
         EditText dn=input("Nombre del dispositivo · Ej. TABLET-08",false),key=input("Clave técnica del establecimiento",false),p1=input("Contraseña administrativa",true),p2=input("Repetir contraseña",true);
         r.addView(dn);r.addView(key);r.addView(p1);r.addView(p2);
         Button ok=btn("Activar AulaControl",GREEN);r.addView(ok);
-        TextView n=t("AulaControl no registra contraseñas personales. La clave técnica se cifra con Android Keystore y la contraseña administrativa se conserva únicamente como hash derivado.",12,false,MUTED);n.setPadding(0,dp(10),0,0);r.addView(n);
+        TextView n=t("AulaControl no registra contraseñas personales. La clave técnica se cifra con Android Keystore y la contraseña administrativa se conserva únicamente como hash derivado en el usuario Propietario.",12,false,MUTED);n.setPadding(0,dp(10),0,0);r.addView(n);
         ok.setOnClickListener(v->{String d=dn.getText().toString().trim(),k=key.getText().toString().trim(),p=p1.getText().toString();if(d.length()<2||k.length()<10||p.length()<6){toast("Completa los datos requeridos");return;}if(!p.equals(p2.getText().toString())){toast("Las contraseñas no coinciden");return;}Core.setup(this,d,k,p);agent();route();});
         setContentView(sc);
     }
@@ -82,7 +79,7 @@ public class MainActivity extends Activity {
     void guestBootstrapErrorUi(){
         LinearLayout r=root();
         title(r,"No se pudo preparar la sesión temporal","La configuración institucional no llegó completa a este usuario. Por seguridad no se permite configurar AulaControl aquí.");
-        LinearLayout c=card();c.addView(t("La sesión será cerrada",20,true,RED));c.addView(t("Vuelve al acceso principal e intenta crear la sesión nuevamente. Tus claves institucionales no deben ingresarse dentro de un usuario temporal.",14,false,MUTED));r.addView(c);
+        LinearLayout c=card();c.addView(t("La sesión temporal no está habilitada",20,true,RED));c.addView(t("Vuelve al acceso principal e intenta crear la sesión nuevamente. Nunca ingreses la clave técnica ni la contraseña administrativa dentro de un usuario temporal.",14,false,MUTED));r.addView(c);
         Button out=btn("Cerrar sesión temporal",ORANGE);r.addView(out);
         out.setOnClickListener(v->{if(!SessionUsers.logoutGuest(this))toast("No fue posible cerrar automáticamente. Reinicia la tablet.");});
         setContentView(r);
@@ -116,7 +113,6 @@ public class MainActivity extends Activity {
     }
 
     void guestUi(){
-        if(Core.adminMode(this)){adminPanel();return;}
         if(Core.user(this).isEmpty()){
             LinearLayout r=root();title(r,"Sesión temporal no válida","No se encontró identidad de sesión. Cierra este usuario para regresar al acceso institucional.");Button out=btn("Cerrar usuario temporal",ORANGE);r.addView(out);out.setOnClickListener(v->SessionUsers.logoutGuest(this));setContentView(r);return;
         }
@@ -130,9 +126,9 @@ public class MainActivity extends Activity {
         title(r,"Sesión lista para proteger","Antes de abrir el launcher Android, AulaControl debe confirmar la supervisión en vivo de esta sesión.");
         LinearLayout c=card();c.addView(t(Core.user(this),23,true,DARK));c.addView(t(Core.roleLabel(this)+(Core.course(this).isEmpty()?"":" · "+Core.course(this)),15,true,GREEN));c.addView(t("🔒 Sesión privada y temporal",14,false,MUTED));r.addView(c);
         Button go=btn("Iniciar sesión segura",GREEN);r.addView(go);
-        TextView p=t("La autorización de captura pertenece a Android. Si no se completa, el launcher no se habilita. La imagen se transmite en vivo a la consola autorizada y no se guarda por defecto.",13,false,MUTED);p.setPadding(0,dp(10),0,dp(10));r.addView(p);
-        Button admin=btn("Administración",ORANGE);r.addView(admin);Button out=btn("Cancelar y cerrar sesión",DARK);r.addView(out);
-        go.setOnClickListener(v->capture());admin.setOnClickListener(v->askAdmin());out.setOnClickListener(v->endGuest());setContentView(sc);
+        TextView p=t("La autorización de captura pertenece a Android. Mientras no se complete, el botón Inicio vuelve a AulaControl. La imagen se transmite en vivo a la consola autorizada y no se guarda por defecto.",13,false,MUTED);p.setPadding(0,dp(10),0,dp(10));r.addView(p);
+        Button out=btn("Cancelar y cerrar sesión",DARK);r.addView(out);
+        go.setOnClickListener(v->capture());out.setOnClickListener(v->endGuest());setContentView(sc);
     }
 
     void capture(){captureAt=System.currentTimeMillis();MediaProjectionManager m=(MediaProjectionManager)getSystemService(MEDIA_PROJECTION_SERVICE);startActivityForResult(m.createScreenCaptureIntent(),CAP);}
@@ -147,7 +143,22 @@ public class MainActivity extends Activity {
 
     void waitFrame(){
         Runnable[] q=new Runnable[1];
-        q[0]=()->{if(ScreenCaptureService.active&&ScreenCaptureService.lastFrameAt>=captureAt){Core.touch(this);agent();openHome();return;}if(System.currentTimeMillis()-captureAt>9000){stopService(new Intent(this,ScreenCaptureService.class));new AlertDialog.Builder(this).setTitle("Supervisión no confirmada").setMessage("La sesión continuará bloqueada hasta recibir una imagen real.").setPositiveButton("Aceptar",(d,w)->guestStartUi()).show();return;}ui.postDelayed(q[0],250);};
+        q[0]=()->{
+            if(ScreenCaptureService.active&&ScreenCaptureService.lastFrameAt>=captureAt){
+                Core.supervisionStarted(this,true);
+                Core.touch(this);
+                Managed.enableGuestLauncher(this);
+                agent();
+                openHome();
+                return;
+            }
+            if(System.currentTimeMillis()-captureAt>9000){
+                stopService(new Intent(this,ScreenCaptureService.class));
+                new AlertDialog.Builder(this).setTitle("Supervisión no confirmada").setMessage("La sesión continuará bloqueada hasta recibir una imagen real.").setPositiveButton("Aceptar",(d,w)->guestStartUi()).show();
+                return;
+            }
+            ui.postDelayed(q[0],250);
+        };
         ui.post(q[0]);
     }
 
@@ -155,20 +166,21 @@ public class MainActivity extends Activity {
         ScrollView sc=new ScrollView(this);LinearLayout r=root();sc.addView(r);
         title(r,"Sesión activa","Puedes volver al launcher original de Android. AulaControl permanece protegiendo y supervisando la sesión en segundo plano.");
         LinearLayout c=card();c.addView(t(Core.user(this),23,true,DARK));c.addView(t(Core.roleLabel(this)+(Core.course(this).isEmpty()?"":" · "+Core.course(this)),15,true,GREEN));c.addView(t("● Supervisión activa · 🔒 Desinstalaciones bloqueadas",13,true,GREEN));r.addView(c);
-        Button home=btn("Abrir inicio de Android",GREEN),settings=btn("Abrir Ajustes",DARK),admin=btn("Administración",ORANGE),logout=btn("Cerrar sesión",RED);r.addView(home);r.addView(settings);r.addView(admin);r.addView(logout);
-        home.setOnClickListener(v->openHome());settings.setOnClickListener(v->{try{startActivity(new Intent(Settings.ACTION_SETTINGS));}catch(Exception ignored){}});admin.setOnClickListener(v->askAdmin());logout.setOnClickListener(v->confirmLogout());setContentView(sc);
+        Button home=btn("Abrir inicio de Android",GREEN),settings=btn("Abrir Ajustes",DARK),logout=btn("Cerrar sesión",RED);r.addView(home);r.addView(settings);r.addView(logout);
+        home.setOnClickListener(v->openHome());settings.setOnClickListener(v->{try{startActivity(new Intent(Settings.ACTION_SETTINGS));}catch(Exception ignored){}});logout.setOnClickListener(v->confirmLogout());setContentView(sc);
     }
 
     void openHome(){try{startActivity(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));}catch(Exception e){toast("No se encontró launcher del sistema");}}
     void confirmLogout(){new AlertDialog.Builder(this).setTitle("Cerrar sesión").setMessage("Se eliminará este usuario temporal y sus datos locales. Las cuentas que no hayas cerrado también desaparecerán del dispositivo.").setNegativeButton("Cancelar",null).setPositiveButton("Cerrar sesión",(d,w)->endGuest()).show();}
-    void endGuest(){stopService(new Intent(this,ScreenCaptureService.class));Core.clearIdentity(this);if(!SessionUsers.logoutGuest(this))toast("No fue posible cerrar automáticamente. Reinicia la tablet.");}
+    void endGuest(){Core.clearIdentity(this);stopService(new Intent(this,ScreenCaptureService.class));if(!SessionUsers.logoutGuest(this))toast("No fue posible cerrar automáticamente. Reinicia la tablet.");}
 
     void askAdmin(){
+        if(!Managed.owner(this)){toast("La administración está disponible sólo en Propietario");return;}
         EditText p=input("Contraseña administrativa",true);
         new AlertDialog.Builder(this).setTitle("Acceso administrador").setView(p).setNegativeButton("Cancelar",null).setPositiveButton("Entrar",(d,w)->{
             if(Core.checkPw(this,p.getText().toString())){
                 Core.adminMode(this,true);
-                if(Managed.owner(this))Managed.exitGate(this);
+                Managed.exitGate(this);
                 Managed.adminUnlock(this);
                 adminPanel();
             }else toast("Clave incorrecta");
@@ -176,15 +188,14 @@ public class MainActivity extends Activity {
     }
 
     void adminPanel(){
+        if(!Managed.owner(this)){route();return;}
         ScrollView sc=new ScrollView(this);LinearLayout r=root();sc.addView(r);
         title(r,"Centro de administración","Modo de mantenimiento total. Las restricciones del usuario se relajan temporalmente hasta cerrar este panel.");
         LinearLayout s=card();s.addView(t("🔓 Administración activa",20,true,ORANGE));s.addView(t("Puedes modificar Ajustes, instalar o desinstalar aplicaciones y cambiar la configuración de AulaControl. Las acciones críticas requieren confirmación.",14,false,MUTED));r.addView(s);
         Button settings=btn("Abrir Ajustes completos de Android",DARK),store=btn("Abrir Play Store",GREEN),apps=btn("Administrar aplicaciones",DARK),cfg=btn("Configurar AulaControl",DARK),restore=btn("Cerrar administración y restaurar protección",GREEN);
         r.addView(settings);r.addView(store);r.addView(apps);r.addView(cfg);
-        if(Managed.owner(this)){
-            Button clean=btn("Eliminar sesiones temporales residuales",ORANGE),release=btn("Liberar Device Owner",RED);r.addView(clean);r.addView(release);
-            clean.setOnClickListener(v->{SessionUsers.cleanupSecondaryUsers(this);toast("Limpieza solicitada");});release.setOnClickListener(v->confirmRelease());
-        }
+        Button clean=btn("Eliminar sesiones temporales residuales",ORANGE),release=btn("Liberar Device Owner",RED);r.addView(clean);r.addView(release);
+        clean.setOnClickListener(v->{SessionUsers.cleanupSecondaryUsers(this);toast("Limpieza solicitada");});release.setOnClickListener(v->confirmRelease());
         r.addView(restore);
         settings.setOnClickListener(v->{try{startActivity(new Intent(Settings.ACTION_SETTINGS));}catch(Exception ignored){}});
         store.setOnClickListener(v->{try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse("market://details?id="+getPackageName())));}catch(Exception e){try{startActivity(new Intent(Settings.ACTION_APPLICATION_SETTINGS));}catch(Exception ignored){}}});
@@ -193,8 +204,9 @@ public class MainActivity extends Activity {
     }
 
     void configUi(){
+        if(!Managed.owner(this)){route();return;}
         ScrollView sc=new ScrollView(this);LinearLayout r=root();sc.addView(r);
-        title(r,"Configuración de AulaControl","Modifica los parámetros técnicos de este usuario administrado.");
+        title(r,"Configuración de AulaControl","Modifica los parámetros técnicos del usuario Propietario.");
         EditText dn=input("Nombre del dispositivo",false);dn.setText(Core.dn(this));EditText key=input("Clave técnica",false);key.setText(Core.key(this));EditText pw=input("Nueva contraseña administrativa · opcional",true);r.addView(dn);r.addView(key);r.addView(pw);
         Button save=btn("Guardar cambios",GREEN),back=btn("Volver",DARK);r.addView(save);r.addView(back);
         save.setOnClickListener(v->{if(dn.getText().toString().trim().length()<2||key.getText().toString().trim().length()<10){toast("Revisa los campos");return;}Core.config(this,dn.getText().toString(),key.getText().toString(),pw.getText().toString());toast("Configuración guardada");adminPanel();});back.setOnClickListener(v->adminPanel());setContentView(sc);
@@ -203,6 +215,7 @@ public class MainActivity extends Activity {
     void closeAdmin(){Core.adminMode(this,false);Managed.restoreProtection(this);if(Managed.owner(this))Managed.enterGate(this);route();}
 
     void confirmRelease(){
+        if(!Managed.owner(this))return;
         EditText p=input("Repite la contraseña administrativa",true);
         new AlertDialog.Builder(this).setTitle("Liberar administración del dispositivo").setMessage("Esta acción reduce la protección institucional y no puede deshacerse sin volver a aprovisionar la tablet.").setView(p).setNegativeButton("Cancelar",null).setPositiveButton("Liberar",(d,w)->{
             if(Core.checkPw(this,p.getText().toString())){
