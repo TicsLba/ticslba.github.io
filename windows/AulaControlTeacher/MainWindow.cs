@@ -30,6 +30,7 @@ public class MainWindow : Window
     readonly ObservableCollection<DeviceUsageSummary> deviceReports = new();
     readonly ObservableCollection<UserUsageSummary> userReports = new();
     readonly ObservableCollection<RecoveryRow> recoveryRows = new();
+    readonly Dictionary<string,DateTime> localSeen = new(StringComparer.OrdinalIgnoreCase);
 
     readonly DataGrid deviceGrid = GridBase();
     readonly DataGrid deviceReportGrid = GridBase();
@@ -46,11 +47,13 @@ public class MainWindow : Window
     readonly TelemetryStore telemetry = new();
 
     Settings settings;
+    RelaySettings relaySettings;
     Discovery? discovery;
     Commands? commands;
     Registry? registry;
+    RemoteClient? remote;
     string wallSignature = "";
-    bool wallBusy;
+    bool wallBusy,remoteBusy;
     TimeSpan reportPeriod = TimeSpan.FromDays(30);
     int ticks;
 
@@ -65,6 +68,7 @@ public class MainWindow : Window
         Background = Canvas;
         FontFamily = new FontFamily("Segoe UI");
         settings = Settings.Load();
+        relaySettings = RelaySettings.Load();
         BuildUi();
         timer.Tick += async (_,_) =>
         {
@@ -72,10 +76,12 @@ public class MainWindow : Window
             await RefreshWall();
             ticks++;
             if(ticks % 3 == 0) RefreshRecovery();
+            if(ticks % 8 == 0) await SyncRemote();
+            if(ticks % 20 == 0) RefreshReports();
         };
         timer.Start();
         Loaded += (_,_) => Configure();
-        Closed += (_,_) => { discovery?.Dispose(); timer.Stop(); http.Dispose(); };
+        Closed += (_,_) => { discovery?.Dispose(); remote?.Dispose(); timer.Stop(); http.Dispose(); };
     }
 
     static DataGrid GridBase() => new()
@@ -177,6 +183,7 @@ public class MainWindow : Window
         bar.Children.Add(Action("Atención",async(_,_)=>await PromptSend("ATTENTION_ON","Modo atención"),Navy));
         bar.Children.Add(Action("Liberar atención",async(_,_)=>await SendSelected("ATTENTION_OFF"),Teal));
         bar.Children.Add(Action("Cerrar sesión",async(_,_)=>await SendSelected("FORCE_LOGOUT"),Red));
+        bar.Children.Add(Action("Vincular relay",async(_,_)=>await PushRelayToSelected(),SoftGold,Navy));
         Grid.SetRow(bar,2);root.Children.Add(bar);
 
         var tabs=new TabControl{Margin=new Thickness(20,3,20,10),Background=Canvas,BorderThickness=new Thickness(0)};
@@ -203,7 +210,7 @@ public class MainWindow : Window
         AddCol(deviceGrid,"Estado","Status",110);AddCol(deviceGrid,"Tablet","Name",150);AddCol(deviceGrid,"Responsable","Person",190);AddCol(deviceGrid,"Rol","RoleText",100);AddCol(deviceGrid,"Curso","CourseText",110);
         AddCol(deviceGrid,"Supervisión","Supervision",135);AddCol(deviceGrid,"Gestión","Protection",130);AddCol(deviceGrid,"Batería","Battery",75,"{0}%");AddCol(deviceGrid,"Modelo","Model",180);AddCol(deviceGrid,"Android","Android",75);AddCol(deviceGrid,"IP","Ip",120);
         var panel=new Grid();panel.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});panel.RowDefinitions.Add(new RowDefinition());
-        var top=new StackPanel{Margin=new Thickness(6,8,6,8)};top.Children.Add(TitleText("Inventario operativo",22));top.Children.Add(Hint("Identidad permanente del dispositivo, sesión responsable actual y estado técnico."));panel.Children.Add(top);Grid.SetRow(deviceGrid,1);panel.Children.Add(Card(deviceGrid,0));return panel;
+        var top=new StackPanel{Margin=new Thickness(6,8,6,8)};top.Children.Add(TitleText("Inventario operativo",22));top.Children.Add(Hint("Identidad permanente del dispositivo, sesión responsable actual y estado técnico. Los equipos remotos aparecen cuando el relay HTTPS está configurado."));panel.Children.Add(top);Grid.SetRow(deviceGrid,1);panel.Children.Add(Card(deviceGrid,0));return panel;
     }
 
     UIElement BuildReportsTab()
@@ -214,7 +221,7 @@ public class MainWindow : Window
 
         var root=new Grid();root.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});root.RowDefinitions.Add(new RowDefinition());
         var top=new Grid{Margin=new Thickness(6,8,6,8)};top.ColumnDefinitions.Add(new ColumnDefinition());top.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});
-        var title=new StackPanel();title.Children.Add(TitleText("Informes de uso y responsabilidad",22));reportCaption.Text="Últimos 30 días · una muestra aprox. por minuto mientras la consola recibe la tablet";title.Children.Add(reportCaption);top.Children.Add(title);
+        var title=new StackPanel();title.Children.Add(TitleText("Informes de uso y responsabilidad",22));reportCaption.Text="Últimos 30 días · una muestra aprox. por minuto mientras la consola o relay reciben la tablet";title.Children.Add(reportCaption);top.Children.Add(title);
         var period=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};period.Children.Add(Action("7 días",(_,_)=>SetReportPeriod(7)));period.Children.Add(Action("30 días",(_,_)=>SetReportPeriod(30),Blue));period.Children.Add(Action("90 días",(_,_)=>SetReportPeriod(90)));Grid.SetColumn(period,1);top.Children.Add(period);root.Children.Add(top);
         var sub=new TabControl{Background=Canvas,BorderThickness=new Thickness(0)};
         var dp=new Grid();dp.RowDefinitions.Add(new RowDefinition());dp.RowDefinitions.Add(new RowDefinition{Height=new GridLength(54)});dp.Children.Add(Card(deviceReportGrid,0));var db=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right};db.Children.Add(Action("Actualizar",(_,_)=>RefreshReports()));db.Children.Add(Action("Exportar tablet seleccionada",(_,_)=>ExportDeviceReport(),Blue));Grid.SetRow(db,1);dp.Children.Add(db);sub.Items.Add(new TabItem{Header="  Por dispositivo  ",Content=dp});
@@ -227,7 +234,7 @@ public class MainWindow : Window
         recoveryGrid.ItemsSource=recoveryRows;
         AddCol(recoveryGrid,"Tablet","DeviceName",160);AddCol(recoveryGrid,"Estado","Status",105);AddCol(recoveryGrid,"Responsable","Person",190);AddCol(recoveryGrid,"Batería","Battery",75,"{0}%");AddCol(recoveryGrid,"Recuperación","Recovery",120);AddCol(recoveryGrid,"Ubicación","Location",190);AddCol(recoveryGrid,"Precisión","Accuracy",85);AddCol(recoveryGrid,"Capturada","LocationTime",150);
         var root=new Grid();root.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});root.RowDefinitions.Add(new RowDefinition());root.RowDefinitions.Add(new RowDefinition{Height=new GridLength(58)});
-        var intro=new StackPanel{Margin=new Thickness(6,8,6,8)};intro.Children.Add(TitleText("Ubicación y recuperación",22));intro.Children.Add(Hint("Seguimiento del dispositivo institucional. La ubicación muestra siempre fecha y precisión; los comandos de esta versión se envían a tablets visibles en la red local."));root.Children.Add(intro);
+        var intro=new StackPanel{Margin=new Thickness(6,8,6,8)};intro.Children.Add(TitleText("Ubicación y recuperación",22));intro.Children.Add(Hint("Seguimiento del dispositivo institucional. La ubicación muestra fecha y precisión. Con relay HTTPS configurado, los comandos pueden quedar pendientes aunque la tablet esté en otra red."));root.Children.Add(intro);
         Grid.SetRow(recoveryGrid,1);root.Children.Add(Card(recoveryGrid,0));
         var bar=new WrapPanel{HorizontalAlignment=HorizontalAlignment.Right,Margin=new Thickness(0,4,0,0)};
         bar.Children.Add(Action("Solicitar ubicación",async(_,_)=>await RecoveryAction("REQUEST_LOCATION")));
@@ -256,16 +263,18 @@ public class MainWindow : Window
 
     void Start()
     {
-        discovery?.Dispose();devices.Clear();wall.Children.Clear();wallImages.Clear();wallStatus.Clear();wallSignature="";
+        discovery?.Dispose();remote?.Dispose();devices.Clear();localSeen.Clear();wall.Children.Clear();wallImages.Clear();wallStatus.Clear();wallSignature="";
         registry=new Registry(settings.Key);foreach(var x in registry.Load())devices.Add(x);
         commands=new Commands(settings.Key);discovery=new Discovery(settings.Key);discovery.Seen+=Incoming;
-        try{discovery.Start();footer.Text="● Consola activa · identidad de sesión · informes locales · ubicación firmada · supervisión en tiempo real";}
+        remote=relaySettings.Enabled?new RemoteClient(settings.Key,relaySettings.Url):null;
+        try{discovery.Start();footer.Text=relaySettings.Enabled?"● Consola activa · LAN + relay HTTPS · informes por responsable · ubicación y recuperación":"● Consola activa · LAN · configura Relay HTTPS para gestión entre redes";}
         catch(Exception e){footer.Text="No se pudo abrir UDP 45888: "+e.Message;}
-        RefreshStats();RefreshReports();RefreshRecovery();_=RefreshWall();
+        RefreshStats();RefreshReports();RefreshRecovery();_=RefreshWall();_=SyncRemote();
     }
 
     void Incoming(Device n)=>Dispatcher.Invoke(()=>
     {
+        localSeen[n.Id]=DateTime.Now;
         var d=devices.FirstOrDefault(x=>x.Id==n.Id);
         if(d==null){devices.Add(n);d=n;if(!string.IsNullOrWhiteSpace(n.User))SessionLog.Change(n.Id,"",n.User,n.Course);}
         else
@@ -277,11 +286,41 @@ public class MainWindow : Window
         telemetry.Observe(d);registry?.Save(devices);RefreshStats();RefreshRecovery();_=RefreshWall();
     });
 
+    bool IsLocal(Device d)=>localSeen.TryGetValue(d.Id,out var t)&&DateTime.Now-t<TimeSpan.FromSeconds(10)&&!string.IsNullOrWhiteSpace(d.Ip);
+
+    async Task SyncRemote()
+    {
+        if(remoteBusy||remote==null||!remote.Enabled)return;remoteBusy=true;
+        try
+        {
+            var list=await remote.FetchDevicesAsync();
+            if(list.Count==0)return;
+            await Dispatcher.InvokeAsync(()=>
+            {
+                foreach(var x in list)
+                {
+                    var d=devices.FirstOrDefault(q=>q.Id==x.DeviceId);
+                    if(d==null){d=new Device{Id=x.DeviceId};devices.Add(d);}
+                    bool local=IsLocal(d);
+                    string old=d.User;
+                    d.DeviceName=x.DeviceName;d.User=x.User;d.Course=x.Course;d.Role=x.Role;d.Model=x.Model;d.Android=x.Android;d.Battery=x.Battery;d.Managed=x.Managed;
+                    if(!local){d.Screen=false;d.FrameAgeMs=-1;d.Seen=DateTime.Now-x.Seen>TimeSpan.FromMinutes(2)?x.Seen:DateTime.Now;}
+                    d.Identity();
+                    if(old!=d.User)SessionLog.Change(d.Id,old,d.User,d.Course);
+                    LiveRecovery.Update(x.DeviceId,x.Lat,x.Lon,x.Accuracy,x.LocationTs,x.Lost);
+                    telemetry.Observe(d);
+                }
+                registry?.Save(devices);RefreshStats();RefreshRecovery();
+            });
+        }
+        finally{remoteBusy=false;}
+    }
+
     void RefreshStats()
     {
         foreach(var d in devices)d.Computed();var on=devices.Where(x=>x.IsOnline).ToList();
-        statOnline.Text=on.Count.ToString();statLive.Text=on.Count(x=>!string.IsNullOrWhiteSpace(x.User)&&x.Screen).ToString();statStudents.Text=on.Count(x=>x.Role=="student").ToString();statTeachers.Text=on.Count(x=>x.Role=="teacher").ToString();
-        statAlerts.Text=on.Count(x=>(!string.IsNullOrWhiteSpace(x.User)&&!x.Screen)||LiveRecovery.Get(x.Id).Lost).ToString();
+        statOnline.Text=on.Count.ToString();statLive.Text=on.Count(x=>IsLocal(x)&&!string.IsNullOrWhiteSpace(x.User)&&x.Screen).ToString();statStudents.Text=on.Count(x=>x.Role=="student").ToString();statTeachers.Text=on.Count(x=>x.Role=="teacher").ToString();
+        statAlerts.Text=devices.Count(x=>LiveRecovery.Get(x.Id).Lost||(x.IsOnline&&!string.IsNullOrWhiteSpace(x.User)&&IsLocal(x)&&!x.Screen)).ToString();
     }
 
     void SetReportPeriod(int days){reportPeriod=TimeSpan.FromDays(days);reportCaption.Text=$"Últimos {days} días · seguimiento por tablet y responsable";RefreshReports();}
@@ -314,19 +353,25 @@ public class MainWindow : Window
         if(selected!=null)recoveryGrid.SelectedItem=recoveryRows.FirstOrDefault(x=>x.DeviceId==selected);
     }
 
-    Device? RecoveryDevice()
+    Device? RecoveryDevice(){if(recoveryGrid.SelectedItem is not RecoveryRow row)return null;return devices.FirstOrDefault(x=>x.Id==row.DeviceId);}
+
+    async Task<(bool,string)> SendSmart(Device d,string action,string value="")
     {
-        if(recoveryGrid.SelectedItem is not RecoveryRow row)return null;return devices.FirstOrDefault(x=>x.Id==row.DeviceId);
+        if(IsLocal(d)&&commands!=null)return await commands.Send(d,action,value);
+        if(remote!=null&&remote.Enabled)return await remote.SendCommandAsync(d.Id,action,value);
+        return(false,"Tablet fuera de LAN y relay no configurado");
     }
+
     async Task RecoveryAction(string action)
     {
-        var d=RecoveryDevice();if(d==null){MessageBox.Show("Selecciona una tablet.","Tablet Escolar");return;}if(!d.IsOnline){MessageBox.Show("La tablet no está visible en la red local. El relay remoto se configura por separado.","Tablet Escolar");return;}
-        var r=await commands!.Send(d,action);footer.Text=r.Item1?$"{d.Name}: comando {action} enviado":$"{d.Name}: {r.Item2}";if(action=="REQUEST_LOCATION")await Task.Delay(1400);RefreshRecovery();
+        var d=RecoveryDevice();if(d==null){MessageBox.Show("Selecciona una tablet.","Tablet Escolar");return;}
+        var r=await SendSmart(d,action);footer.Text=r.Item1?$"{d.Name}: comando {action} enviado":$"{d.Name}: {r.Item2}";
+        if(action=="REQUEST_LOCATION"){await Task.Delay(1400);await SyncRemote();}RefreshRecovery();
     }
     async Task EnableLostMode()
     {
         var d=RecoveryDevice();if(d==null){MessageBox.Show("Selecciona una tablet.","Tablet Escolar");return;}
-        if(MessageBox.Show($"¿Activar Modo pérdida en {d.Name}?\n\nEl equipo mostrará una pantalla institucional de recuperación y se bloqueará.","Tablet Escolar",MessageBoxButton.YesNo,MessageBoxImage.Warning)!=MessageBoxResult.Yes)return;
+        if(MessageBox.Show($"¿Activar Modo pérdida en {d.Name}?\n\nEl equipo mostrará una pantalla institucional de recuperación, reforzará ubicación cuando sea posible y se bloqueará.","Tablet Escolar",MessageBoxButton.YesNo,MessageBoxImage.Warning)!=MessageBoxResult.Yes)return;
         await RecoveryAction("LOST_MODE_ON");
     }
     void OpenMap()
@@ -335,7 +380,7 @@ public class MainWindow : Window
         try{System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(row.MapUrl){UseShellExecute=true});}catch(Exception e){MessageBox.Show(e.Message,"No se pudo abrir el mapa");}
     }
 
-    string WallSignature()=>string.Join("|",devices.OrderBy(x=>x.Id).Select(x=>$"{x.Id}:{x.User}:{x.Role}:{x.Course}:{x.IsOnline}:{x.Screen}:{x.Managed}:{LiveRecovery.Get(x.Id).Lost}"));
+    string WallSignature()=>string.Join("|",devices.OrderBy(x=>x.Id).Select(x=>$"{x.Id}:{x.User}:{x.Role}:{x.Course}:{x.IsOnline}:{x.Screen}:{x.Managed}:{LiveRecovery.Get(x.Id).Lost}:{IsLocal(x)}"));
     void RebuildWall()
     {
         wall.Children.Clear();wallImages.Clear();wallStatus.Clear();
@@ -344,16 +389,16 @@ public class MainWindow : Window
             var lost=LiveRecovery.Get(d.Id).Lost;
             var g=new Grid();g.RowDefinitions.Add(new RowDefinition{Height=new GridLength(48)});g.RowDefinitions.Add(new RowDefinition());g.RowDefinitions.Add(new RowDefinition{Height=new GridLength(60)});
             var h=new Grid{Margin=new Thickness(12,8,12,6)};h.ColumnDefinitions.Add(new ColumnDefinition());h.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});h.Children.Add(new TextBlock{Text=d.Name,Foreground=Ink,FontSize=15,FontWeight=FontWeights.Bold,VerticalAlignment=VerticalAlignment.Center});
-            var badge=new Border{Background=lost?SoftRed:d.Managed?SoftTeal:SoftGold,CornerRadius=new CornerRadius(10),Padding=new Thickness(8,4,8,4),Child=new TextBlock{Text=lost?"PÉRDIDA":d.Managed?"Gestionada":"Revisar",Foreground=lost?Red:d.Managed?Teal:Gold,FontSize=11,FontWeight=FontWeights.SemiBold}};Grid.SetColumn(badge,1);h.Children.Add(badge);g.Children.Add(h);
+            var badge=new Border{Background=lost?SoftRed:d.Managed?SoftTeal:SoftGold,CornerRadius=new CornerRadius(10),Padding=new Thickness(8,4,8,4),Child=new TextBlock{Text=lost?"PÉRDIDA":IsLocal(d)?"LAN":"REMOTA",Foreground=lost?Red:IsLocal(d)?Teal:Blue,FontSize=11,FontWeight=FontWeights.SemiBold}};Grid.SetColumn(badge,1);h.Children.Add(badge);g.Children.Add(h);
             var ib=new Border{Background=new SolidColorBrush(Color.FromRgb(15,23,42)),CornerRadius=new CornerRadius(10),Margin=new Thickness(8,0,8,0)};var im=new Image{Stretch=Stretch.Uniform};ib.Child=im;Grid.SetRow(ib,1);g.Children.Add(ib);wallImages[d.Id]=im;
             var st=new TextBlock{Foreground=Muted,FontWeight=FontWeights.SemiBold,Margin=new Thickness(12,7,12,7),TextWrapping=TextWrapping.Wrap};st.Text=WallText(d);Grid.SetRow(st,2);g.Children.Add(st);wallStatus[d.Id]=st;
-            var card=Card(g,0);card.Width=326;card.Height=270;card.Margin=new Thickness(7);card.Cursor=System.Windows.Input.Cursors.Hand;card.MouseLeftButtonDown+=(_,_)=>{if(d.IsOnline&&d.Screen&&!string.IsNullOrWhiteSpace(d.User))new ViewerWindow(d,settings.Key){Owner=this}.Show();};wall.Children.Add(card);
+            var card=Card(g,0);card.Width=326;card.Height=270;card.Margin=new Thickness(7);card.Cursor=System.Windows.Input.Cursors.Hand;card.MouseLeftButtonDown+=(_,_)=>{if(IsLocal(d)&&d.Screen&&!string.IsNullOrWhiteSpace(d.User))new ViewerWindow(d,settings.Key){Owner=this}.Show();};wall.Children.Add(card);
         }
-        if(devices.Count==0)wall.Children.Add(new TextBlock{Text="Esperando tablets en la red institucional…",Foreground=Muted,FontSize=18,Margin=new Thickness(25)});
+        if(devices.Count==0)wall.Children.Add(new TextBlock{Text="Esperando tablets por LAN o relay institucional…",Foreground=Muted,FontSize=18,Margin=new Thickness(25)});
     }
-    string WallText(Device d)=>LiveRecovery.Get(d.Id).Lost?$"● MODO PÉRDIDA · {LiveRecovery.Get(d.Id).LocationText}":!d.IsOnline?"○ Sin conexión":string.IsNullOrWhiteSpace(d.User)?"○ Disponible · esperando identificación":d.Screen?$"● EN VIVO · {d.Person}\n{d.RoleText}{(string.IsNullOrWhiteSpace(d.Course)?"":" · "+d.Course)}":$"● {d.Person} · sesión sin pantalla";
+    string WallText(Device d)=>LiveRecovery.Get(d.Id).Lost?$"● MODO PÉRDIDA · {LiveRecovery.Get(d.Id).LocationText}":!d.IsOnline?"○ Sin conexión":!IsLocal(d)?$"● REMOTA · {d.Person}\núltimo reporte por relay":string.IsNullOrWhiteSpace(d.User)?"○ Disponible · esperando identificación":d.Screen?$"● EN VIVO · {d.Person}\n{d.RoleText}{(string.IsNullOrWhiteSpace(d.Course)?"":" · "+d.Course)}":$"● {d.Person} · sesión sin pantalla";
 
-    async Task RefreshWall(){if(wallBusy)return;wallBusy=true;try{var s=WallSignature();if(s!=wallSignature){wallSignature=s;RebuildWall();}await Task.WhenAll(devices.Where(d=>d.IsOnline&&!LiveRecovery.Get(d.Id).Lost).Select(FetchFrame));}finally{wallBusy=false;}}
+    async Task RefreshWall(){if(wallBusy)return;wallBusy=true;try{var s=WallSignature();if(s!=wallSignature){wallSignature=s;RebuildWall();}await Task.WhenAll(devices.Where(d=>IsLocal(d)&&d.Screen&&!LiveRecovery.Get(d.Id).Lost).Select(FetchFrame));}finally{wallBusy=false;}}
     async Task FetchFrame(Device d)
     {
         if(!wallStatus.TryGetValue(d.Id,out var st)||!wallImages.TryGetValue(d.Id,out var im))return;if(!d.IsOnline){st.Text="○ Sin conexión";im.Source=null;return;}if(string.IsNullOrWhiteSpace(d.User)){st.Text="○ Disponible · esperando identificación";st.Foreground=Blue;im.Source=null;return;}if(!d.Screen){st.Text=$"● {d.Person} · BLOQUEADA: sin supervisión";st.Foreground=Gold;im.Source=null;return;}
@@ -363,15 +408,30 @@ public class MainWindow : Window
     List<Device> Selected()=>deviceGrid.SelectedItems.Cast<Device>().ToList();
     async Task SendSelected(string action,string value="")
     {
-        var s=Selected();if(s.Count==0){MessageBox.Show("Selecciona al menos una tablet en Dispositivos.","Tablet Escolar");return;}var rs=await Task.WhenAll(s.Where(x=>x.IsOnline).Select(async d=>(d,await commands!.Send(d,action,value))));foreach(var x in rs)if(!x.Item2.Item1)footer.Text=$"{x.d.Name}: {x.Item2.Item2}";
+        var s=Selected();if(s.Count==0){MessageBox.Show("Selecciona al menos una tablet en Dispositivos.","Tablet Escolar");return;}
+        foreach(var d in s){var r=await SendSmart(d,action,value);if(!r.Item1)footer.Text=$"{d.Name}: {r.Item2}";}
     }
     async Task PromptSend(string action,string title)
     {
         string help=action=="MESSAGE"?"Mensaje breve que verá el usuario":action=="OPEN_URL"?"URL completa (https://...)":action=="LAUNCH_APP"?"Nombre de paquete Android, por ejemplo com.google.android.youtube":"Mensaje que ocupará la pantalla durante Atención";var x=Ask(title,help,false);if(!string.IsNullOrWhiteSpace(x))await SendSelected(action,x);
     }
+    async Task PushRelayToSelected()
+    {
+        if(!relaySettings.Enabled){MessageBox.Show("Primero configura una URL HTTPS de Relay desde Configuración.","Tablet Escolar");return;}
+        var s=Selected().Where(IsLocal).ToList();if(s.Count==0){MessageBox.Show("Selecciona tablets visibles por LAN para vincular el relay.","Tablet Escolar");return;}
+        foreach(var d in s){var r=await commands!.Send(d,"SET_RELAY_URL",relaySettings.Url);if(!r.Item1){footer.Text=$"{d.Name}: {r.Item2}";return;}}
+        MessageBox.Show($"Relay configurado en {s.Count} tablet(s). Las futuras sesiones temporales heredarán esta configuración.","Tablet Escolar");
+    }
     void SelectOnline(){deviceGrid.SelectedItems.Clear();foreach(var d in devices.Where(x=>x.IsOnline))deviceGrid.SelectedItems.Add(d);}
-    void OpenMosaic(){var chosen=Selected().Where(x=>x.IsOnline&&x.Screen&&!string.IsNullOrWhiteSpace(x.User)).ToList();if(chosen.Count==0)chosen=devices.Where(x=>x.IsOnline&&x.Screen&&!string.IsNullOrWhiteSpace(x.User)).ToList();if(chosen.Count==0){MessageBox.Show("No hay pantallas supervisadas disponibles.","Tablet Escolar");return;}new MosaicWindow(chosen,settings.Key){Owner=this}.Show();}
-    void ConfigDialog(){var k=Ask("Configuración","Clave técnica del establecimiento",true,settings.Key);if(!string.IsNullOrWhiteSpace(k)&&k.Length>=10){settings.Key=k;settings.Save();Start();}}
+    void OpenMosaic(){var chosen=Selected().Where(x=>IsLocal(x)&&x.Screen&&!string.IsNullOrWhiteSpace(x.User)).ToList();if(chosen.Count==0)chosen=devices.Where(x=>IsLocal(x)&&x.Screen&&!string.IsNullOrWhiteSpace(x.User)).ToList();if(chosen.Count==0){MessageBox.Show("No hay pantallas LAN supervisadas disponibles.","Tablet Escolar");return;}new MosaicWindow(chosen,settings.Key){Owner=this}.Show();}
+
+    void ConfigDialog()
+    {
+        var k=Ask("Configuración","Clave técnica del establecimiento",true,settings.Key);if(string.IsNullOrWhiteSpace(k)||k.Length<10)return;
+        var ru=Ask("Relay remoto","URL HTTPS del relay de Tablet Escolar. Déjala vacía para trabajar sólo por LAN.",false,relaySettings.Url)??relaySettings.Url;
+        if(!string.IsNullOrWhiteSpace(ru)&&(!Uri.TryCreate(ru,UriKind.Absolute,out var u)||!u.Scheme.Equals("https",StringComparison.OrdinalIgnoreCase))){MessageBox.Show("El relay debe usar una URL HTTPS válida.","Tablet Escolar");return;}
+        settings.Key=k;settings.Save();relaySettings.Url=ru.Trim();relaySettings.Save();Start();
+    }
 
     string? Ask(string title,string help,bool password,string initial="")
     {
