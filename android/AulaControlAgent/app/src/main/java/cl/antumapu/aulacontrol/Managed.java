@@ -23,6 +23,7 @@ final class Managed {
     static void grantManagedPermissions(Context c,DevicePolicyManager d,ComponentName a,String self){
         grant(d,a,self,Manifest.permission.ACCESS_COARSE_LOCATION);
         grant(d,a,self,Manifest.permission.ACCESS_FINE_LOCATION);
+        try{grant(d,a,self,Manifest.permission.PACKAGE_USAGE_STATS);}catch(Exception ignored){}
         if(Build.VERSION.SDK_INT>=29)grant(d,a,self,Manifest.permission.ACCESS_BACKGROUND_LOCATION);
         if(Build.VERSION.SDK_INT>=33)grant(d,a,self,Manifest.permission.POST_NOTIFICATIONS);
     }
@@ -44,7 +45,6 @@ final class Managed {
             restriction(d,a,UserManager.DISALLOW_DEBUGGING_FEATURES,true);
             if(Build.VERSION.SDK_INT>=30)try{d.setUserControlDisabledPackages(a,Collections.singletonList(self));}catch(Exception ignored){}
             grantManagedPermissions(c,d,a,self);
-            // 3.0 never registers itself as HOME. Clear leftovers from older installs if present.
             try{d.clearPackagePersistentPreferredActivities(a,self);}catch(Exception ignored){}
         }catch(Exception ignored){}
     }
@@ -65,8 +65,6 @@ final class Managed {
             restriction(d,a,UserManager.DISALLOW_MODIFY_ACCOUNTS,false);
             restriction(d,a,UserManager.DISALLOW_CONFIG_WIFI,false);
             restriction(d,a,UserManager.DISALLOW_BLUETOOTH,false);
-            // Students and teachers may use installed apps and personal accounts, but cannot
-            // install unknown packages or remove institutional management.
             grantManagedPermissions(c,d,a,self);
             try{d.clearPackagePersistentPreferredActivities(a,self);}catch(Exception ignored){}
         }catch(Exception ignored){}
