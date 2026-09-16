@@ -22,6 +22,7 @@ public class SplashActivity extends Activity {
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
+        BootGateScheduler.cancel(this);
         getWindow().setStatusBarColor(NAVY);
         getWindow().setNavigationBarColor(NAVY);
 
