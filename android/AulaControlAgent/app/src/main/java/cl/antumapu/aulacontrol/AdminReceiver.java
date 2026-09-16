@@ -34,8 +34,16 @@ public class AdminReceiver extends DeviceAdminReceiver {
             else c.startService(s);
         } catch (Exception ignored) {}
 
+        launchGate(c);
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            if (Managed.profileOwner(c) && !Core.supervisionStarted(c)) launchGate(c);
+        }, 700);
+    }
+
+    private void launchGate(Context c) {
         try {
-            c.startActivity(new Intent(c, MainActivity.class)
+            Class<?> target = Managed.profileOwner(c) ? PrivacyGateActivity.class : MainActivity.class;
+            c.startActivity(new Intent(c, target)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK |
                             Intent.FLAG_ACTIVITY_CLEAR_TOP |
                             Intent.FLAG_ACTIVITY_SINGLE_TOP));
