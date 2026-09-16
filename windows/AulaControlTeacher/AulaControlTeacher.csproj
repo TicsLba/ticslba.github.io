@@ -7,14 +7,14 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>TabletEscolarTeacher</AssemblyName>
     <RootNamespace>AulaControlTeacher</RootNamespace>
-    <Version>2.0.0</Version>
-    <AssemblyVersion>2.0.0.0</AssemblyVersion>
-    <FileVersion>2.0.0.0</FileVersion>
+    <Version>2.1.0</Version>
+    <AssemblyVersion>2.1.0.0</AssemblyVersion>
+    <FileVersion>2.1.0.0</FileVersion>
     <Product>Tablet Escolar</Product>
     <Company>Desarrollador Eduardo Pérez González</Company>
     <Authors>Eduardo Pérez González</Authors>
     <Copyright>© 2026 Eduardo Pérez González</Copyright>
-    <Description>Consola docente para gestión, supervisión en vivo y sesiones temporales de tablets Android institucionales</Description>
+    <Description>Consola docente para gestión, supervisión en vivo, informes de uso y recuperación de tablets Android institucionales</Description>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained>
