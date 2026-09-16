@@ -12,6 +12,10 @@ final class SessionUsers {
     static boolean createAndSwitch(Context c,String role,String name,String course){
         if(!Managed.owner(c))return false;
         try{
+            // Si una sesión anterior terminó de forma anómala, limpiamos cualquier
+            // usuario secundario residual antes de crear una nueva sesión.
+            cleanupSecondaryUsers(c);
+
             DevicePolicyManager d=Managed.dpm(c);
             d.setAffiliationIds(Managed.admin(c),Collections.singleton(AFFILIATION));
 
@@ -27,7 +31,7 @@ final class SessionUsers {
             int flags=DevicePolicyManager.SKIP_SETUP_WIZARD|DevicePolicyManager.LEAVE_ALL_SYSTEM_APPS_ENABLED;
             if(Build.VERSION.SDK_INT>=28)flags|=DevicePolicyManager.MAKE_USER_EPHEMERAL;
 
-            String userLabel=Core.ROLE_TEACHER.equals(role)?"Profesor Temporal":"Estudiante Temporal";
+            String userLabel=Core.ROLE_TEACHER.equals(role)?"Tablet Escolar · Profesor":"Tablet Escolar · Estudiante";
             UserHandle u=d.createAndManageUser(Managed.admin(c),userLabel,Managed.admin(c),ex,flags);
             if(u==null)return false;
             return d.switchUser(Managed.admin(c),u);
@@ -42,10 +46,6 @@ final class SessionUsers {
                 int result=d.logoutUser(Managed.admin(c));
                 return result==UserManager.USER_OPERATION_SUCCESS;
             }
-
-            // En Android 8 el profile owner del usuario secundario puede borrar
-            // únicamente su propio usuario mediante wipeData(). Nunca ejecutamos
-            // esta ruta desde el Device Owner del usuario principal.
             d.wipeData(0);
             return true;
         }catch(Exception ignored){return false;}
