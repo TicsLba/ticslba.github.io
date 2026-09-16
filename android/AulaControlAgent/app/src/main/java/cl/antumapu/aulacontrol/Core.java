@@ -87,9 +87,6 @@ final class Core {
         String role=b.getString(K_ROLE,ROLE_STUDENT);
         String name=b.getString(K_NAME,"");
         String course=b.getString(K_COURSE,"");
-
-        // El usuario temporal recibe únicamente los datos necesarios para su sesión.
-        // La contraseña/hash de administración permanece exclusivamente en Propietario.
         if(technical.isEmpty()||deviceName.isEmpty()||deviceId.isEmpty()||name.isEmpty())return;
         if(!ROLE_STUDENT.equals(role)&&!ROLE_TEACHER.equals(role))return;
 
@@ -154,8 +151,17 @@ final class Core {
     static String ip(){try{var n=NetworkInterface.getNetworkInterfaces();while(n.hasMoreElements()){var ni=n.nextElement();if(!ni.isUp()||ni.isLoopback())continue;var a=ni.getInetAddresses();while(a.hasMoreElements()){var x=a.nextElement();if(x instanceof Inet4Address&&x.isSiteLocalAddress())return x.getHostAddress();}}}catch(Exception ignored){}return "0.0.0.0";}
     static java.util.List<InetAddress> broadcasts(){var o=new LinkedHashSet<InetAddress>();try{o.add(InetAddress.getByName("255.255.255.255"));}catch(Exception ignored){}try{var n=NetworkInterface.getNetworkInterfaces();while(n.hasMoreElements()){var ni=n.nextElement();if(!ni.isUp()||ni.isLoopback())continue;for(var ia:ni.getInterfaceAddresses())if(ia.getBroadcast()!=null)o.add(ia.getBroadcast());}}catch(Exception ignored){}return new ArrayList<>(o);}
 
-    // Sólo se usa el timestamp del último evento de interacción; no se conserva
-    // historial de apps, sitios, texto ni contenido personal.
+    static boolean usageAccess(Context c){
+        try{
+            AppOpsManager a=(AppOpsManager)c.getSystemService(Context.APP_OPS_SERVICE);
+            if(a==null)return false;
+            int mode=a.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS,android.os.Process.myUid(),c.getPackageName());
+            return mode==AppOpsManager.MODE_ALLOWED;
+        }catch(Exception ignored){return false;}
+    }
+
+    // Sólo se consulta el timestamp del último evento de interacción. No se conserva
+    // historial de aplicaciones, sitios, texto ni contenido personal.
     static long activity(Context c){
         long latest=last(c);
         try{
