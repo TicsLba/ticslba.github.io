@@ -15,6 +15,7 @@ final class Managed{
    DevicePolicyManager d=dpm(c);ComponentName a=admin(c);String self=c.getPackageName();
    d.setAffiliationIds(a,Collections.singleton(SessionUsers.AFFILIATION));
    d.setUninstallBlocked(a,self,true);
+   try{d.setLockTaskPackages(a,new String[]{self});}catch(Exception ignored){}
    restriction(d,a,UserManager.DISALLOW_UNINSTALL_APPS,true);
    restriction(d,a,UserManager.DISALLOW_APPS_CONTROL,true);
    restriction(d,a,UserManager.DISALLOW_FACTORY_RESET,true);
@@ -23,7 +24,7 @@ final class Managed{
    restriction(d,a,UserManager.DISALLOW_DEBUGGING_FEATURES,true);
    if(Build.VERSION.SDK_INT>=30)try{d.setUserControlDisabledPackages(a,Collections.singletonList(self));}catch(Exception ignored){}
    if(Build.VERSION.SDK_INT>=33)try{d.setPermissionGrantState(a,self,Manifest.permission.POST_NOTIFICATIONS,DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED);}catch(Exception ignored){}
-   preferAulaControlHome(c,d,a);
+   preferTabletSchoolHome(c,d,a);
   }catch(Exception ignored){}
  }
 
@@ -39,20 +40,19 @@ final class Managed{
    restriction(d,a,UserManager.DISALLOW_ADD_USER,true);
    restriction(d,a,UserManager.DISALLOW_USER_SWITCH,true);
    restriction(d,a,UserManager.DISALLOW_APPS_CONTROL,true);
-   // Se permite gestionar/cerrar cuentas personales durante la sesión.
    restriction(d,a,UserManager.DISALLOW_MODIFY_ACCOUNTS,false);
    restriction(d,a,UserManager.DISALLOW_CONFIG_WIFI,false);
    restriction(d,a,UserManager.DISALLOW_BLUETOOTH,false);
    if(Build.VERSION.SDK_INT>=33)try{d.setPermissionGrantState(a,self,Manifest.permission.POST_NOTIFICATIONS,DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED);}catch(Exception ignored){}
 
-   // Antes de confirmar un cuadro real de MediaProjection, Home vuelve a AulaControl.
-   // Después de confirmar supervisión, se restaura el launcher original del fabricante.
+   // Antes de confirmar un cuadro real de MediaProjection, Home vuelve a Tablet Escolar.
+   // Después se restaura el launcher original del fabricante.
    if(Core.supervisionStarted(c)&&ScreenCaptureService.active)preferOriginalHome(c,d,a);
-   else preferAulaControlHome(c,d,a);
+   else preferTabletSchoolHome(c,d,a);
   }catch(Exception ignored){}
  }
 
- static void preferAulaControlHome(Context c,DevicePolicyManager d,ComponentName a){
+ static void preferTabletSchoolHome(Context c,DevicePolicyManager d,ComponentName a){
   try{
    IntentFilter f=new IntentFilter(Intent.ACTION_MAIN);f.addCategory(Intent.CATEGORY_HOME);f.addCategory(Intent.CATEGORY_DEFAULT);
    d.addPersistentPreferredActivity(a,f,new ComponentName(c,PrivacyGateActivity.class));
@@ -79,8 +79,6 @@ final class Managed{
 
  static void enterGate(Activity a){if(owner(a)&&!Core.adminMode(a)){applyOwner(a);try{a.startLockTask();}catch(Exception ignored){}}}
 
- // El modo administrador existe sólo en el usuario Propietario. Un estudiante o
- // profesor nunca puede relajar las políticas del Profile Owner temporal.
  static void adminUnlock(Context c){
   if(!owner(c))return;
   try{
@@ -92,6 +90,7 @@ final class Managed{
    restriction(d,a,UserManager.DISALLOW_DEBUGGING_FEATURES,false);
    restriction(d,a,UserManager.DISALLOW_FACTORY_RESET,false);
    d.setUninstallBlocked(a,c.getPackageName(),false);
+   try{d.setLockTaskPackages(a,new String[]{});}catch(Exception ignored){}
    try{d.setStatusBarDisabled(a,false);}catch(Exception ignored){}
   }catch(Exception ignored){}
  }
@@ -104,6 +103,7 @@ final class Managed{
   if(!owner(c))return false;
   try{
    adminUnlock(c);DevicePolicyManager d=dpm(c);ComponentName a=admin(c);
+   try{d.setLockTaskPackages(a,new String[]{});}catch(Exception ignored){}
    d.clearPackagePersistentPreferredActivities(a,c.getPackageName());
    d.clearDeviceOwnerApp(c.getPackageName());
    return true;
