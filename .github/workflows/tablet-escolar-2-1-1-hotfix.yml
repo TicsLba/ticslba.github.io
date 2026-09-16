@@ -1,0 +1,31 @@
+name: Tablet Escolar 2.1.1 Hotfix
+
+on:
+  push:
+    branches: [master]
+    paths: ['.github/workflows/tablet-escolar-2-1-1-hotfix.yml']
+  workflow_dispatch:
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tablet-escolar-v2-1-1-hotfix
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.0'
+      - name: Build Android APKs
+        working-directory: android/AulaControlAgent
+        run: gradle --no-daemon :app:assembleDebug :app:assembleRelease
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Tablet-Escolar-Android-2.1.1-hotfix
+          path: |
+            android/AulaControlAgent/app/build/outputs/apk/debug/app-debug.apk
+            android/AulaControlAgent/app/build/outputs/apk/release/app-release-unsigned.apk
