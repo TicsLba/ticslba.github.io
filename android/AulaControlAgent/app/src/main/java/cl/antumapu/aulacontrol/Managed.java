@@ -54,7 +54,7 @@ final class Managed{
    grantManagedPermissions(c,d,a,self);
 
    if(RecoveryPrefs.lost(c))preferTabletSchoolHome(c,d,a);
-   else if(Core.supervisionStarted(c)&&ScreenCaptureService.active)preferOriginalHome(c,d,a);
+   else if(Core.supervisionStarted(c)&&ScreenCaptureService.active)preferOriginalHomeAsync(c);
    else preferTabletSchoolHome(c,d,a);
   }catch(Exception ignored){}
  }
@@ -101,9 +101,17 @@ final class Managed{
   }catch(Exception ignored){}
  }
 
+ static void preferOriginalHomeAsync(Context c){
+  Context app=c.getApplicationContext();
+  new Thread(()->{
+   if(!profileOwner(app)||RecoveryPrefs.lost(app)||!Core.supervisionStarted(app)||!ScreenCaptureService.active)return;
+   try{preferOriginalHome(app,dpm(app),admin(app));}catch(Exception ignored){}
+  },"TabletEscolarHomeHandoff").start();
+ }
+
  static void enableGuestLauncher(Context c){
   if(!profileOwner(c)||RecoveryPrefs.lost(c)||!Core.supervisionStarted(c)||!ScreenCaptureService.active)return;
-  try{preferOriginalHome(c,dpm(c),admin(c));}catch(Exception ignored){}
+  preferOriginalHomeAsync(c);
  }
 
  static boolean openOriginalHome(Context c){
