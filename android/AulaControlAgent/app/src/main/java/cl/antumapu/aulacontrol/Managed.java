@@ -59,29 +59,59 @@ final class Managed{
   }catch(Exception ignored){}
  }
 
+ static IntentFilter homeFilter(){
+  IntentFilter f=new IntentFilter(Intent.ACTION_MAIN);f.addCategory(Intent.CATEGORY_HOME);f.addCategory(Intent.CATEGORY_DEFAULT);return f;
+ }
+
+ static List<ComponentName> homes(Context c){
+  ArrayList<ComponentName> out=new ArrayList<>();
+  try{
+   Intent q=new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
+   for(ResolveInfo r:c.getPackageManager().queryIntentActivities(q,PackageManager.MATCH_ALL)){
+    if(r.activityInfo!=null)out.add(new ComponentName(r.activityInfo.packageName,r.activityInfo.name));
+   }
+  }catch(Exception ignored){}
+  return out;
+ }
+
+ static ComponentName originalHome(Context c){
+  String self=c.getPackageName();
+  for(ComponentName n:homes(c))if(!self.equals(n.getPackageName()))return n;
+  return null;
+ }
+
+ static void clearHomePreferences(Context c,DevicePolicyManager d,ComponentName a){
+  LinkedHashSet<String> pkgs=new LinkedHashSet<>();pkgs.add(c.getPackageName());
+  for(ComponentName n:homes(c))pkgs.add(n.getPackageName());
+  for(String pkg:pkgs)try{d.clearPackagePersistentPreferredActivities(a,pkg);}catch(Exception ignored){}
+ }
+
  static void preferTabletSchoolHome(Context c,DevicePolicyManager d,ComponentName a){
   try{
-   IntentFilter f=new IntentFilter(Intent.ACTION_MAIN);f.addCategory(Intent.CATEGORY_HOME);f.addCategory(Intent.CATEGORY_DEFAULT);
-   d.addPersistentPreferredActivity(a,f,new ComponentName(c,PrivacyGateActivity.class));
+   clearHomePreferences(c,d,a);
+   d.addPersistentPreferredActivity(a,homeFilter(),new ComponentName(c,PrivacyGateActivity.class));
   }catch(Exception ignored){}
  }
 
  static void preferOriginalHome(Context c,DevicePolicyManager d,ComponentName a){
   try{
-   Intent q=new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
-   List<ResolveInfo> rs=c.getPackageManager().queryIntentActivities(q,PackageManager.MATCH_ALL);
-   for(ResolveInfo r:rs){
-    if(r.activityInfo==null||c.getPackageName().equals(r.activityInfo.packageName))continue;
-    IntentFilter f=new IntentFilter(Intent.ACTION_MAIN);f.addCategory(Intent.CATEGORY_HOME);f.addCategory(Intent.CATEGORY_DEFAULT);
-    d.addPersistentPreferredActivity(a,f,new ComponentName(r.activityInfo.packageName,r.activityInfo.name));
-    break;
-   }
+   ComponentName n=originalHome(c);if(n==null)return;
+   clearHomePreferences(c,d,a);
+   d.addPersistentPreferredActivity(a,homeFilter(),n);
   }catch(Exception ignored){}
  }
 
  static void enableGuestLauncher(Context c){
   if(!profileOwner(c)||RecoveryPrefs.lost(c)||!Core.supervisionStarted(c)||!ScreenCaptureService.active)return;
   try{preferOriginalHome(c,dpm(c),admin(c));}catch(Exception ignored){}
+ }
+
+ static boolean openOriginalHome(Context c){
+  try{
+   ComponentName n=originalHome(c);if(n==null)return false;
+   Intent i=new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).setComponent(n).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+   c.startActivity(i);return true;
+  }catch(Exception ignored){return false;}
  }
 
  static void enterGate(Activity a){if(owner(a)&&!Core.adminMode(a)){applyOwner(a);try{a.startLockTask();}catch(Exception ignored){}}}
@@ -112,7 +142,7 @@ final class Managed{
   try{
    adminUnlock(c);DevicePolicyManager d=dpm(c);ComponentName a=admin(c);
    try{d.setLockTaskPackages(a,new String[]{});}catch(Exception ignored){}
-   d.clearPackagePersistentPreferredActivities(a,c.getPackageName());
+   clearHomePreferences(c,d,a);
    d.clearDeviceOwnerApp(c.getPackageName());
    return true;
   }catch(Exception e){return false;}
