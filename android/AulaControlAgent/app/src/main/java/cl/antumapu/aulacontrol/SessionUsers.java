@@ -12,8 +12,6 @@ final class SessionUsers {
     static boolean createAndSwitch(Context c,String role,String name,String course){
         if(!Managed.owner(c))return false;
         try{
-            // Si una sesión anterior terminó de forma anómala, limpiamos cualquier
-            // usuario secundario residual antes de crear una nueva sesión.
             cleanupSecondaryUsers(c);
 
             DevicePolicyManager d=Managed.dpm(c);
@@ -27,6 +25,7 @@ final class SessionUsers {
             ex.putString(Core.K_DEVICE_ID,Core.id(c));
             ex.putString(Core.K_KEY,Core.key(c));
             ex.putString(Core.K_AFFILIATION,AFFILIATION);
+            ex.putString(RelayPrefs.EXTRA,RelayPrefs.url(c));
 
             int flags=DevicePolicyManager.SKIP_SETUP_WIZARD|DevicePolicyManager.LEAVE_ALL_SYSTEM_APPS_ENABLED;
             if(Build.VERSION.SDK_INT>=28)flags|=DevicePolicyManager.MAKE_USER_EPHEMERAL;
