@@ -28,7 +28,7 @@ public class AgentService extends Service{
   ex=Executors.newScheduledThreadPool(2);
   ex.scheduleAtFixedRate(this::beacon,0,3,TimeUnit.SECONDS);
   ex.scheduleAtFixedRate(this::idle,5,5,TimeUnit.SECONDS);
-  new Thread(this::server,"AulaControlCmd").start();
+  new Thread(this::server,"TabletEscolarCmd").start();
  }
 
  @Override public int onStartCommand(Intent i,int f,int id){
@@ -51,15 +51,29 @@ public class AgentService extends Service{
  void idle(){
   if(Core.user(this).isEmpty()||Core.adminMode(this)||!Core.guest(this)){if(warn)cancelWarning();return;}
 
-  // Al crear un usuario temporal Android arranca AgentService ANTES de que el
-  // usuario pueda aceptar MediaProjection. 1.3.1 interpretaba esos primeros
-  // segundos como una pérdida de supervisión y hacía logout inmediatamente.
-  // Ahora la ausencia de captura sólo es crítica DESPUÉS de haber confirmado
-  // al menos un cuadro real de la sesión.
+  // Una sesión temporal se crea antes de que Android permita autorizar
+  // MediaProjection. La falta de captura sólo es crítica después de haber
+  // confirmado al menos un cuadro real.
   if(!ScreenCaptureService.active){
    if(Core.supervisionStarted(this))ui.post(this::logout);
    else if(warn)cancelWarning();
    return;
+  }
+
+  // PACKAGE_USAGE_STATS es un permiso especial y puede no estar disponible en
+  // cada usuario temporal. Para evitar cierres falsos mientras la tablet está
+  // claramente en uso, cuando no hay acceso a UsageStats consideramos actividad
+  // mientras la pantalla siga interactiva. Con UsageStats disponible se aplica
+  // el límite exacto de 10/30 minutos sin almacenar historial.
+  if(!Core.usageAccess(this)){
+   try{
+    PowerManager pm=(PowerManager)getSystemService(POWER_SERVICE);
+    if(pm!=null&&pm.isInteractive()){
+     Core.touch(this);
+     if(warn)cancelWarning();
+     return;
+    }
+   }catch(Exception ignored){}
   }
 
   if(warn)return;
@@ -78,7 +92,7 @@ public class AgentService extends Service{
   String mins=Core.ROLE_TEACHER.equals(Core.role(this))?"30 minutos":"10 minutos";
 
   Notification.Builder b=builder("agent",NotificationManager.IMPORTANCE_HIGH)
-          .setContentTitle("Cierre automático de sesión")
+          .setContentTitle("Tablet Escolar · cierre de sesión")
           .setContentText("Sin actividad durante "+mins)
           .setSmallIcon(android.R.drawable.ic_dialog_alert)
           .setOngoing(true)
@@ -100,19 +114,12 @@ public class AgentService extends Service{
   Toast.makeText(this,"La sesión continúa activa",Toast.LENGTH_SHORT).show();
  }
 
- void cancelWarning(){
-  warn=false;ui.removeCallbacks(autoLogout);refreshSessionNotification();
- }
-
- void refreshSessionNotification(){
-  try{((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).notify(SESSION_NOTIFICATION,note());}catch(Exception ignored){}
- }
+ void cancelWarning(){warn=false;ui.removeCallbacks(autoLogout);refreshSessionNotification();}
+ void refreshSessionNotification(){try{((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).notify(SESSION_NOTIFICATION,note());}catch(Exception ignored){}}
 
  void logout(){
   warn=false;ui.removeCallbacks(autoLogout);
   boolean guest=Core.guest(this);
-  // Primero invalidamos la identidad/supervisión para que detener MediaProjection
-  // sea interpretado como un cierre voluntario y no como una segunda caída.
   Core.clearIdentity(this);
   stopService(new Intent(this,ScreenCaptureService.class));
   beacon();
@@ -142,19 +149,16 @@ public class AgentService extends Service{
  String action(String a,String v){switch(a){case"PING":return null;case"MESSAGE":message(v);return null;case"OPEN_URL":url(v);return null;case"FORCE_LOGOUT":ui.post(this::logout);return null;case"ATTENTION_ON":attention(v);return null;case"ATTENTION_OFF":sendBroadcast(new Intent("cl.antumapu.aulacontrol.ATTENTION_OFF").setPackage(getPackageName()));return null;case"LAUNCH_APP":launchApp(v);return null;default:return"unknown";}}
  void attention(String v){try{startActivity(new Intent(this,AttentionActivity.class).putExtra("message",v).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TOP));}catch(Exception ignored){}}
  void launchApp(String pkg){try{Intent i=getPackageManager().getLaunchIntentForPackage(pkg);if(i!=null){i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);startActivity(i);}}catch(Exception ignored){}}
- void message(String v){Notification n=builder("msg",NotificationManager.IMPORTANCE_HIGH).setContentTitle("Mensaje del docente").setContentText(v).setStyle(new Notification.BigTextStyle().bigText(v)).setSmallIcon(android.R.drawable.ic_dialog_info).build();((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).notify(1003,n);}
+ void message(String v){Notification n=builder("msg",NotificationManager.IMPORTANCE_HIGH).setContentTitle("Mensaje del docente · Tablet Escolar").setContentText(v).setStyle(new Notification.BigTextStyle().bigText(v)).setSmallIcon(android.R.drawable.ic_dialog_info).build();((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).notify(1003,n);}
  void url(String v){try{Uri u=Uri.parse(v);if(!"http".equalsIgnoreCase(u.getScheme())&&!"https".equalsIgnoreCase(u.getScheme()))return;Intent i=new Intent(Intent.ACTION_VIEW,u);i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);startActivity(i);}catch(Exception ignored){}}
 
- PendingIntent openPanelIntent(){
-  Intent i=new Intent(this,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP);
-  return PendingIntent.getActivity(this,203,i,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
- }
+ PendingIntent openPanelIntent(){Intent i=new Intent(this,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP);return PendingIntent.getActivity(this,203,i,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);}
 
  Notification note(){
   String who=Core.user(this).isEmpty()?Core.dn(this):Core.user(this)+" · "+Core.roleLabel(this);
   Notification.Builder b=builder("agent",NotificationManager.IMPORTANCE_LOW)
-          .setContentTitle("AulaControl · Sesión protegida")
-          .setContentText(who+" · toca para abrir AulaControl")
+          .setContentTitle("Tablet Escolar · sesión protegida")
+          .setContentText(who+" · toca para abrir el panel")
           .setSmallIcon(android.R.drawable.presence_online)
           .setContentIntent(openPanelIntent())
           .setOngoing(true)
@@ -167,5 +171,5 @@ public class AgentService extends Service{
   return b.build();
  }
 
- Notification.Builder builder(String ch,int imp){NotificationManager nm=(NotificationManager)getSystemService(NOTIFICATION_SERVICE);if(Build.VERSION.SDK_INT>=26&&nm.getNotificationChannel(ch)==null)nm.createNotificationChannel(new NotificationChannel(ch,"AulaControl",imp));return Build.VERSION.SDK_INT>=26?new Notification.Builder(this,ch):new Notification.Builder(this);}
+ Notification.Builder builder(String ch,int imp){NotificationManager nm=(NotificationManager)getSystemService(NOTIFICATION_SERVICE);if(Build.VERSION.SDK_INT>=26&&nm.getNotificationChannel(ch)==null)nm.createNotificationChannel(new NotificationChannel(ch,"Tablet Escolar",imp));return Build.VERSION.SDK_INT>=26?new Notification.Builder(this,ch):new Notification.Builder(this);}
 }
