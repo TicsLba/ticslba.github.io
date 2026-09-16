@@ -8,14 +8,10 @@ public class AdminReceiver extends DeviceAdminReceiver {
     @Override
     public void onEnabled(Context c, Intent i) {
         super.onEnabled(c, i);
-
-        // createAndManageUser() entrega adminExtras directamente como extras
-        // del Intent recibido por onEnabled(). También aceptamos el bundle
-        // tradicional de aprovisionamiento para mantener compatibilidad.
         if (Managed.profileOwner(c)) {
             Core.setupGuest(c, i);
+            RelayPrefs.setupGuest(c, i);
         }
-
         Managed.apply(c);
         start(c);
     }
@@ -25,6 +21,7 @@ public class AdminReceiver extends DeviceAdminReceiver {
         super.onProfileProvisioningComplete(c, i);
         if (Managed.profileOwner(c)) {
             Core.setupGuest(c, i);
+            RelayPrefs.setupGuest(c, i);
         }
         Managed.apply(c);
         start(c);
