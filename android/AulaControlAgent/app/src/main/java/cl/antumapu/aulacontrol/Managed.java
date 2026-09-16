@@ -7,6 +7,13 @@ final class Managed{
  static ComponentName admin(Context c){return new ComponentName(c,AdminReceiver.class);} static DevicePolicyManager dpm(Context c){return (DevicePolicyManager)c.getSystemService(Context.DEVICE_POLICY_SERVICE);}
  static boolean owner(Context c){try{return dpm(c).isDeviceOwnerApp(c.getPackageName());}catch(Exception e){return false;}} static boolean profileOwner(Context c){try{return dpm(c).isProfileOwnerApp(c.getPackageName());}catch(Exception e){return false;}} static boolean managed(Context c){return owner(c)||profileOwner(c);}
  static void restriction(DevicePolicyManager d,ComponentName a,String key,boolean on){try{if(on)d.addUserRestriction(a,key);else d.clearUserRestriction(a,key);}catch(Exception ignored){}}
+ static void grant(DevicePolicyManager d,ComponentName a,String pkg,String permission){try{d.setPermissionGrantState(a,pkg,permission,DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED);}catch(Exception ignored){}}
+ static void grantManagedPermissions(Context c,DevicePolicyManager d,ComponentName a,String self){
+  grant(d,a,self,Manifest.permission.ACCESS_COARSE_LOCATION);
+  grant(d,a,self,Manifest.permission.ACCESS_FINE_LOCATION);
+  if(Build.VERSION.SDK_INT>=29)grant(d,a,self,Manifest.permission.ACCESS_BACKGROUND_LOCATION);
+  if(Build.VERSION.SDK_INT>=33)grant(d,a,self,Manifest.permission.POST_NOTIFICATIONS);
+ }
  static void apply(Context c){if(owner(c)){if(Core.adminMode(c))adminUnlock(c);else applyOwner(c);}else if(profileOwner(c))applyGuest(c);}
 
  static void applyOwner(Context c){
@@ -23,7 +30,7 @@ final class Managed{
    restriction(d,a,UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES,true);
    restriction(d,a,UserManager.DISALLOW_DEBUGGING_FEATURES,true);
    if(Build.VERSION.SDK_INT>=30)try{d.setUserControlDisabledPackages(a,Collections.singletonList(self));}catch(Exception ignored){}
-   if(Build.VERSION.SDK_INT>=33)try{d.setPermissionGrantState(a,self,Manifest.permission.POST_NOTIFICATIONS,DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED);}catch(Exception ignored){}
+   grantManagedPermissions(c,d,a,self);
    preferTabletSchoolHome(c,d,a);
   }catch(Exception ignored){}
  }
@@ -33,6 +40,7 @@ final class Managed{
    DevicePolicyManager d=dpm(c);ComponentName a=admin(c);String self=c.getPackageName();
    d.setAffiliationIds(a,Collections.singleton(SessionUsers.AFFILIATION));
    d.setUninstallBlocked(a,self,true);
+   try{d.setLockTaskPackages(a,new String[]{self});}catch(Exception ignored){}
    restriction(d,a,UserManager.DISALLOW_UNINSTALL_APPS,true);
    restriction(d,a,UserManager.DISALLOW_INSTALL_APPS,true);
    restriction(d,a,UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES,true);
@@ -43,11 +51,10 @@ final class Managed{
    restriction(d,a,UserManager.DISALLOW_MODIFY_ACCOUNTS,false);
    restriction(d,a,UserManager.DISALLOW_CONFIG_WIFI,false);
    restriction(d,a,UserManager.DISALLOW_BLUETOOTH,false);
-   if(Build.VERSION.SDK_INT>=33)try{d.setPermissionGrantState(a,self,Manifest.permission.POST_NOTIFICATIONS,DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED);}catch(Exception ignored){}
+   grantManagedPermissions(c,d,a,self);
 
-   // Antes de confirmar un cuadro real de MediaProjection, Home vuelve a Tablet Escolar.
-   // Después se restaura el launcher original del fabricante.
-   if(Core.supervisionStarted(c)&&ScreenCaptureService.active)preferOriginalHome(c,d,a);
+   if(RecoveryPrefs.lost(c))preferTabletSchoolHome(c,d,a);
+   else if(Core.supervisionStarted(c)&&ScreenCaptureService.active)preferOriginalHome(c,d,a);
    else preferTabletSchoolHome(c,d,a);
   }catch(Exception ignored){}
  }
@@ -73,7 +80,7 @@ final class Managed{
  }
 
  static void enableGuestLauncher(Context c){
-  if(!profileOwner(c)||!Core.supervisionStarted(c)||!ScreenCaptureService.active)return;
+  if(!profileOwner(c)||RecoveryPrefs.lost(c)||!Core.supervisionStarted(c)||!ScreenCaptureService.active)return;
   try{preferOriginalHome(c,dpm(c),admin(c));}catch(Exception ignored){}
  }
 
@@ -95,6 +102,7 @@ final class Managed{
   }catch(Exception ignored){}
  }
 
+ static void lockNow(Context c){try{if(managed(c))dpm(c).lockNow();}catch(Exception ignored){}}
  static void restoreProtection(Context c){Core.adminMode(c,false);apply(c);}
  static void exitGate(Activity a){try{a.stopLockTask();}catch(Exception ignored){}}
  static void enter(Activity a){enterGate(a);} static void exit(Activity a){exitGate(a);if(owner(a))adminUnlock(a);}
