@@ -1,25 +1,37 @@
-AULACONTROL 1.1.2 · PRIVACIDAD Y SEGURIDAD
+TABLET ESCOLAR 2.1 · PRIVACIDAD, TRAZABILIDAD Y SEGURIDAD
 
-AulaControl fue diseñado para proteger a los usuarios y a los dispositivos institucionales sin capturar credenciales personales.
+Tablet Escolar administra dispositivos institucionales y registra responsabilidad de uso sin implementar keylogging ni capturar credenciales personales.
 
-1. CONTRASEÑAS Y CREDENCIALES
-AulaControl no solicita, registra, almacena ni transmite contraseñas personales, PIN, credenciales de cuentas, tokens de autenticación ni claves ingresadas por el usuario. No realiza keylogging ni crea historiales de pulsaciones de teclado.
+1. IDENTIFICACIÓN Y RESPONSABILIDAD DE USO
+Cada sesión temporal registra los datos operativos necesarios para trazabilidad institucional: nombre declarado o identidad institucional cuando corresponda, rol (Estudiante/Profesor), curso en el caso de estudiantes, dispositivo utilizado, fecha/hora y duración aproximada de la sesión. Esto permite generar informes por responsable y por dispositivo.
 
-2. DATOS NECESARIOS PARA LA SESIÓN
-Para identificar el uso del dispositivo, AulaControl procesa únicamente los datos operativos necesarios para su función: nombre y curso declarados por el usuario, nombre e identificador del dispositivo, dirección IP local, batería, estado de conexión, versión de Android y estado de supervisión.
+2. CONTRASEÑAS Y CREDENCIALES
+Tablet Escolar no registra contraseñas personales, PIN, tokens de autenticación ni pulsaciones de teclado. No realiza keylogging. Las credenciales introducidas en aplicaciones o servicios externos no forman parte de la telemetría de Tablet Escolar.
 
-3. SUPERVISIÓN DE PANTALLA
-Durante una sesión activa, la imagen de pantalla se transmite temporalmente a la consola docente autorizada dentro de la red institucional configurada. AulaControl no guarda grabaciones ni capturas históricas por defecto.
+3. TELEMETRÍA TÉCNICA
+Puede registrar identificador y nombre institucional del equipo, modelo, versión de Android, batería, estado de administración, conexión, última actividad y métricas agregadas de uso necesarias para operación, mantenimiento e informes.
 
-4. SIN ENVÍO DE CREDENCIALES AL DESARROLLADOR
-AulaControl no envía contraseñas, credenciales personales ni contenido de autenticación a servidores del desarrollador. La supervisión opera entre la tablet institucional y la consola autorizada del establecimiento.
+4. USO DE APLICACIONES
+Cuando Android permite acceso a estadísticas de uso, Tablet Escolar puede contabilizar tiempo agregado por aplicación. No necesita guardar páginas web visitadas, búsquedas, documentos abiertos ni texto escrito dentro de esas aplicaciones.
 
-5. DISPOSITIVOS INSTITUCIONALES
-Los dispositivos administrados son propiedad de la institución. Por razones de seguridad, custodia, disponibilidad, prevención de pérdida y uso responsable, el dispositivo puede ser identificado, localizado dentro de la infraestructura administrada y supervisado técnicamente durante su utilización institucional.
+5. SUPERVISIÓN DE PANTALLA
+Durante una sesión activa, la pantalla puede transmitirse en tiempo real a una consola autorizada dentro de la red institucional. Tablet Escolar no crea grabaciones ni un historial de capturas de pantalla por defecto. Su principio es: supervisión en tiempo real, no vigilancia histórica de pantalla.
 
-6. FINALIDAD
-La finalidad de AulaControl es contribuir a la seguridad del usuario, la protección del dispositivo institucional y la supervisión responsable de su uso educativo. No está diseñado para obtener contraseñas, credenciales privadas ni información de autenticación personal.
+6. UBICACIÓN INSTITUCIONAL
+Cuando la política del establecimiento lo habilita, Tablet Escolar puede registrar la ubicación del dispositivo junto con fecha/hora y precisión. La ubicación se asocia al equipo institucional. En Modo pérdida puede aumentarse la frecuencia de actualización para facilitar la recuperación del dispositivo.
 
+7. MODO PÉRDIDA Y RECUPERACIÓN
+Un administrador autorizado puede solicitar ubicación, bloquear el equipo y activar Modo pérdida. El sistema puede mostrar una pantalla institucional de recuperación y seguir reportando telemetría mientras el equipo tenga conectividad y Android permita el servicio.
+
+8. RELAY REMOTO
+Opcionalmente, telemetría, ubicación y comandos pueden viajar mediante un relay HTTPS. Los datos personales del payload se cifran en la aplicación y el relay no necesita conocer su contenido. La pantalla en vivo no se transmite por el relay por defecto.
+
+9. SESIONES TEMPORALES
+Estudiantes y profesores utilizan usuarios Android temporales cuando el dispositivo está configurado como Device Owner/Profile Owner. Al cerrar sesión, el usuario temporal se elimina para reducir la permanencia de cuentas, cookies y datos personales.
+
+10. FINALIDAD
+La finalidad es seguridad, custodia, responsabilidad de uso, operación técnica, recuperación ante pérdida y supervisión educativa de dispositivos institucionales. No está diseñado para capturar credenciales privadas ni para vigilancia histórica indiscriminada.
+
+Producto: Tablet Escolar
+Versión: 2.1.0
 Desarrollador: Eduardo Pérez González
-Producto: AulaControl
-Versión: 1.1.2
