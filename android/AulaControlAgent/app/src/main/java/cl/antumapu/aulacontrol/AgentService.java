@@ -26,10 +26,11 @@ public class AgentService extends Service{
   super.onCreate();
   startForeground(SESSION_NOTIFICATION,note());
   run=true;
-  ex=Executors.newScheduledThreadPool(3);
+  ex=Executors.newScheduledThreadPool(4);
   ex.scheduleAtFixedRate(this::beacon,0,3,TimeUnit.SECONDS);
   ex.scheduleAtFixedRate(this::idle,5,5,TimeUnit.SECONDS);
   ex.scheduleAtFixedRate(this::locationTick,4,60,TimeUnit.SECONDS);
+  ex.scheduleAtFixedRate(()->RemoteRelay.pulse(this),8,30,TimeUnit.SECONDS);
   new Thread(this::server,"TabletEscolarCmd").start();
   if(RecoveryPrefs.lost(this))ui.post(this::openLostMode);
  }
