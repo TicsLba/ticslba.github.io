@@ -1,5 +1,5 @@
-# Tablet Escolar 2.0 final-candidate build
-name: Tablet Escolar 2.0 Final Candidate
+# Tablet Escolar 2.1 release-candidate build
+name: Tablet Escolar 2.1 Management RC
 
 on:
   push:
@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: tablet-escolar-v2-final
+          ref: tablet-escolar-v2-1-telemetry
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -26,7 +26,7 @@ jobs:
         run: gradle --no-daemon :app:assembleDebug :app:assembleRelease
       - uses: actions/upload-artifact@v4
         with:
-          name: Tablet-Escolar-Android-2.0.0
+          name: Tablet-Escolar-Android-2.1.0-RC
           path: |
             android/AulaControlAgent/app/build/outputs/apk/debug/app-debug.apk
             android/AulaControlAgent/app/build/outputs/apk/release/app-release-unsigned.apk
@@ -36,7 +36,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: tablet-escolar-v2-final
+          ref: tablet-escolar-v2-1-telemetry
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
@@ -62,5 +62,5 @@ jobs:
           Remove-Item .\windows-signing.pfx -Force
       - uses: actions/upload-artifact@v4
         with:
-          name: Tablet-Escolar-Windows-2.0.0
+          name: Tablet-Escolar-Windows-2.1.0-RC
           path: dist/windows/**
