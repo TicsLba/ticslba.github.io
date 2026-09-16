@@ -14,7 +14,7 @@ public class LostModeActivity extends Activity {
     TextView t(String s,int z,boolean b,int c){TextView v=new TextView(this);v.setText(s);v.setTextSize(z);v.setTextColor(c);if(b)v.setTypeface(null,1);return v;}
 
     @Override public void onCreate(Bundle b){super.onCreate(b);showUi();}
-    @Override protected void onResume(){super.onResume();if(!Core.lost(this)){try{stopLockTask();}catch(Exception ignored){}finish();return;}showUi();try{startLockTask();}catch(Exception ignored){}}
+    @Override protected void onResume(){super.onResume();if(!RecoveryPrefs.lost(this)){try{stopLockTask();}catch(Exception ignored){}finish();return;}showUi();try{startLockTask();}catch(Exception ignored){}}
     @Override public void onBackPressed(){}
 
     void showUi(){
