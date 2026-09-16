@@ -15,7 +15,6 @@
     <Authors>Eduardo Pérez González</Authors>
     <Copyright>© 2026 Eduardo Pérez González</Copyright>
     <Description>Consola docente para gestión, supervisión en vivo y sesiones temporales de tablets Android institucionales</Description>
-    <ApplicationIcon>TabletEscolar.ico</ApplicationIcon>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained>
@@ -23,8 +22,5 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="TabletEscolar.ico" />
   </ItemGroup>
 </Project>
