@@ -29,3 +29,37 @@ jobs:
           path: |
             android/TabletEscolar3/app/build/outputs/apk/debug/app-debug.apk
             android/TabletEscolar3/app/build/outputs/apk/release/app-release-unsigned.apk
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tablet-escolar-v3
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build Windows console 3.0
+        shell: pwsh
+        run: dotnet publish .\windows\AulaControlTeacher\AulaControlTeacher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o .\dist\windows
+      - name: Optional Authenticode signing
+        shell: pwsh
+        env:
+          CERT_B64: ${{ secrets.WINDOWS_CODE_SIGN_PFX_BASE64 }}
+          CERT_PASS: ${{ secrets.WINDOWS_CODE_SIGN_PASSWORD }}
+        run: |
+          $exe = '.\dist\windows\TabletEscolarTeacher.exe'
+          if ([string]::IsNullOrWhiteSpace($env:CERT_B64) -or [string]::IsNullOrWhiteSpace($env:CERT_PASS)) {
+            Write-Host "No trusted Windows code-signing certificate configured; keeping EXE unsigned."
+            exit 0
+          }
+          [IO.File]::WriteAllBytes('.\windows-signing.pfx',[Convert]::FromBase64String($env:CERT_B64))
+          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Filter signtool.exe -Recurse | Sort-Object FullName -Descending | Select-Object -First 1
+          if (-not $signtool) { throw 'signtool.exe not found' }
+          & $signtool.FullName sign /fd SHA256 /td SHA256 /tr http://timestamp.digicert.com /f .\windows-signing.pfx /p $env:CERT_PASS $exe
+          & $signtool.FullName verify /pa /v $exe
+          Remove-Item .\windows-signing.pfx -Force
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Tablet-Escolar-Windows-3.0.0
+          path: dist/windows/**
