@@ -30,7 +30,7 @@ public class SessionSetupActivity extends Activity {
 
     void bootstrap(){
         if(!PolicyManager.profileOwner(this)){startActivity(new Intent(this,SplashActivity.class));finish();return;}
-        if(!Store.guest() || Store.user(this).isEmpty()){invalidSession();return;}
+        if(!Store.guest(this)||Store.user(this).isEmpty()){invalidSession();return;}
         if(Store.supervisionStarted(this)&&!CaptureService.active){closeForLostSupervision();return;}
         if(Store.STATE_ACTIVE.equals(Store.state(this))&&CaptureService.active){activePanel();return;}
         preparing();
