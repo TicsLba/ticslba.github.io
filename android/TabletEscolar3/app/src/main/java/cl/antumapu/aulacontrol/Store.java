@@ -30,8 +30,8 @@ final class Store {
     static void state(Context c,String s){sp(c).edit().putString("state",s).apply();}
     static boolean guest(Context c){return sp(c).getBoolean("guest",false);}
     static String role(Context c){return sp(c).getString("role","");}
-    static String user(Context c){return Crypto.decryptLocal(sp(c).getString("user","");}
-    static String course(Context c){return Crypto.decryptLocal(sp(c).getString("course","");}
+    static String user(Context c){return Crypto.decryptLocal(sp(c).getString("user",""));}
+    static String course(Context c){return Crypto.decryptLocal(sp(c).getString("course",""));}
     static String roleLabel(Context c){return ROLE_TEACHER.equals(role(c))?"Profesor":ROLE_STUDENT.equals(role(c))?"Estudiante":"";}
     static long idleLimit(Context c){return ROLE_TEACHER.equals(role(c))?30L*60_000L:10L*60_000L;}
     static long lastActivity(Context c){return sp(c).getLong("last_activity",System.currentTimeMillis());}
