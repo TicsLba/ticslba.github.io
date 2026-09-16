@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.IO;
 using System.Text;
 
 namespace AulaControlTeacher;
@@ -198,7 +199,6 @@ public sealed class TelemetryStore
                     if (p.Count < 7) continue;
                     if (!DateTime.TryParse(p[0], null, DateTimeStyles.RoundtripKind, out var ts) || ts < since) continue;
 
-                    // Compatibilidad con archivos 2.1-A iniciales sin columna user.
                     if (p.Count >= 8)
                     {
                         list.Add(new TelemetrySample(
