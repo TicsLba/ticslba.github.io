@@ -23,9 +23,62 @@ public class MainWindow : Window
     static readonly SolidColorBrush Line = new(Color.FromRgb(221,228,239));
     static readonly SolidColorBrush SoftBlue = new(Color.FromRgb(232,237,255));
     static readonly SolidColorBrush SoftTeal = new(Color.FromRgb(229,250,245));
+    static readonly SolidColorBrush SoftGold = new(Color.FromRgb(255,247,226));
+    static readonly SolidColorBrush SoftRed = new(Color.FromRgb(255,238,240));
 
     readonly ObservableCollection<Device> devices = new();
-    readonly DataGrid grid = new()
+    readonly ObservableCollection<DeviceUsageSummary> deviceReports = new();
+    readonly ObservableCollection<UserUsageSummary> userReports = new();
+    readonly ObservableCollection<RecoveryRow> recoveryRows = new();
+
+    readonly DataGrid deviceGrid = GridBase();
+    readonly DataGrid deviceReportGrid = GridBase();
+    readonly DataGrid userReportGrid = GridBase();
+    readonly DataGrid recoveryGrid = GridBase();
+    readonly WrapPanel wall = new() { Margin = new Thickness(8) };
+    readonly Dictionary<string,Image> wallImages = new();
+    readonly Dictionary<string,TextBlock> wallStatus = new();
+    readonly TextBlock footer = new() { Foreground = Muted, VerticalAlignment = VerticalAlignment.Center };
+    readonly TextBlock statOnline = new(), statLive = new(), statStudents = new(), statTeachers = new(), statAlerts = new();
+    readonly TextBlock reportCaption = new() { Foreground = Muted };
+    readonly DispatcherTimer timer = new() { Interval = TimeSpan.FromMilliseconds(1400) };
+    readonly HttpClient http = new() { Timeout = TimeSpan.FromSeconds(2.5) };
+    readonly TelemetryStore telemetry = new();
+
+    Settings settings;
+    Discovery? discovery;
+    Commands? commands;
+    Registry? registry;
+    string wallSignature = "";
+    bool wallBusy;
+    TimeSpan reportPeriod = TimeSpan.FromDays(30);
+    int ticks;
+
+    public MainWindow()
+    {
+        Title = "Tablet Escolar · Centro de gestión";
+        Width = 1560;
+        Height = 920;
+        MinWidth = 1180;
+        MinHeight = 720;
+        WindowStartupLocation = WindowStartupLocation.CenterScreen;
+        Background = Canvas;
+        FontFamily = new FontFamily("Segoe UI");
+        settings = Settings.Load();
+        BuildUi();
+        timer.Tick += async (_,_) =>
+        {
+            RefreshStats();
+            await RefreshWall();
+            ticks++;
+            if(ticks % 3 == 0) RefreshRecovery();
+        };
+        timer.Start();
+        Loaded += (_,_) => Configure();
+        Closed += (_,_) => { discovery?.Dispose(); timer.Stop(); http.Dispose(); };
+    }
+
+    static DataGrid GridBase() => new()
     {
         SelectionMode = DataGridSelectionMode.Extended,
         AutoGenerateColumns = false,
@@ -34,45 +87,11 @@ public class MainWindow : Window
         RowHeight = 46,
         HeadersVisibility = DataGridHeadersVisibility.Column,
         GridLinesVisibility = DataGridGridLinesVisibility.Horizontal,
-        HorizontalGridLinesBrush = Line,
         Background = Brushes.White,
         BorderThickness = new Thickness(0)
     };
-    readonly WrapPanel wall = new() { Margin = new Thickness(8) };
-    readonly Dictionary<string, Image> wallImages = new();
-    readonly Dictionary<string, TextBlock> wallStatus = new();
-    readonly TextBlock footer = new() { Foreground = Muted, VerticalAlignment = VerticalAlignment.Center };
-    readonly TextBlock statOnline = new(), statLive = new(), statStudents = new(), statTeachers = new(), statAlerts = new();
-    readonly DispatcherTimer timer = new() { Interval = TimeSpan.FromMilliseconds(1400) };
-    readonly HttpClient http = new() { Timeout = TimeSpan.FromSeconds(2.5) };
 
-    Settings settings;
-    Discovery? discovery;
-    Commands? commands;
-    Registry? registry;
-    string wallSignature = "";
-    bool wallBusy;
-
-    public MainWindow()
-    {
-        Title = "Tablet Escolar · Consola docente";
-        Width = 1500;
-        Height = 900;
-        MinWidth = 1120;
-        MinHeight = 700;
-        WindowStartupLocation = WindowStartupLocation.CenterScreen;
-        Background = Canvas;
-        FontFamily = new FontFamily("Segoe UI");
-        try { Icon = BitmapFrame.Create(new Uri("pack://application:,,,/TabletEscolar.ico")); } catch { }
-        settings = Settings.Load();
-        BuildUi();
-        timer.Tick += async (_, _) => { RefreshStats(); await RefreshWall(); };
-        timer.Start();
-        Loaded += (_, _) => Configure();
-        Closed += (_, _) => { discovery?.Dispose(); timer.Stop(); http.Dispose(); };
-    }
-
-    Border Card(UIElement child, double pad = 16) => new()
+    Border Card(UIElement child,double pad=16) => new()
     {
         Background = Brushes.White,
         CornerRadius = new CornerRadius(18),
@@ -82,7 +101,7 @@ public class MainWindow : Window
         Child = child
     };
 
-    Button Action(string text, RoutedEventHandler click, Brush? fill = null, Brush? foreground = null)
+    Button Action(string text,RoutedEventHandler click,Brush? fill=null,Brush? foreground=null)
     {
         var b = new Button
         {
@@ -100,215 +119,262 @@ public class MainWindow : Window
         return b;
     }
 
-    Border Stat(string title, string caption, TextBlock value, Brush accent)
+    TextBlock TitleText(string s,double z=24) => new(){Text=s,FontSize=z,FontWeight=FontWeights.Bold,Foreground=Navy};
+    TextBlock Hint(string s) => new(){Text=s,Foreground=Muted,TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,5,0,10)};
+
+    Border Stat(string title,string caption,TextBlock value,Brush accent)
     {
-        value.FontSize = 29; value.FontWeight = FontWeights.Bold; value.Foreground = Ink; value.Text = "0";
-        var p = new StackPanel();
-        p.Children.Add(new TextBlock { Text = title, Foreground = accent, FontWeight = FontWeights.Bold, FontSize = 11 });
+        value.FontSize=29;value.FontWeight=FontWeights.Bold;value.Foreground=Ink;value.Text="0";
+        var p=new StackPanel();
+        p.Children.Add(new TextBlock{Text=title,Foreground=accent,FontWeight=FontWeights.Bold,FontSize=11});
         p.Children.Add(value);
-        p.Children.Add(new TextBlock { Text = caption, Foreground = Muted, FontSize = 11 });
-        var c = Card(p, 13); c.Margin = new Thickness(4); return c;
+        p.Children.Add(new TextBlock{Text=caption,Foreground=Muted,FontSize=11});
+        var c=Card(p,13);c.Margin=new Thickness(4);return c;
     }
 
     UIElement BrandMark()
     {
-        var box = new Grid { Width = 58, Height = 58, Background = Blue };
-        box.Clip = new RectangleGeometry(new Rect(0,0,58,58), 15, 15);
-        var tablet = new Border
-        {
-            Width = 29, Height = 38, CornerRadius = new CornerRadius(5),
-            BorderBrush = Brushes.White, BorderThickness = new Thickness(3),
-            HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center
-        };
-        var dot = new EllipseGeometry(new Point(29,45), 2, 2);
-        box.Children.Add(tablet);
-        return box;
+        var box=new Border{Width=58,Height=58,CornerRadius=new CornerRadius(16),Background=Blue};
+        var g=new Grid();
+        var tablet=new Border{Width=29,Height=38,CornerRadius=new CornerRadius(5),BorderBrush=Brushes.White,BorderThickness=new Thickness(3),HorizontalAlignment=HorizontalAlignment.Center,VerticalAlignment=VerticalAlignment.Center};
+        var dot=new Border{Width=4,Height=4,CornerRadius=new CornerRadius(2),Background=Brushes.White,HorizontalAlignment=HorizontalAlignment.Center,VerticalAlignment=VerticalAlignment.Bottom,Margin=new Thickness(0,0,0,7)};
+        g.Children.Add(tablet);g.Children.Add(dot);box.Child=g;return box;
     }
 
     void BuildUi()
     {
-        var root = new Grid();
-        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(100) });
-        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(100) });
-        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(62) });
+        var root=new Grid();
+        root.RowDefinitions.Add(new RowDefinition{Height=new GridLength(100)});
+        root.RowDefinitions.Add(new RowDefinition{Height=new GridLength(100)});
+        root.RowDefinitions.Add(new RowDefinition{Height=new GridLength(62)});
         root.RowDefinitions.Add(new RowDefinition());
-        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(38) });
+        root.RowDefinitions.Add(new RowDefinition{Height=new GridLength(38)});
 
-        var head = new Border { Background = Navy, Padding = new Thickness(24,14,24,14) };
-        var hg = new Grid(); hg.ColumnDefinitions.Add(new ColumnDefinition()); hg.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var left = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-        left.Children.Add(BrandMark());
-        var words = new StackPanel { Margin = new Thickness(15,0,0,0), VerticalAlignment = VerticalAlignment.Center };
-        words.Children.Add(new TextBlock { Text = "Tablet Escolar", Foreground = Brushes.White, FontSize = 30, FontWeight = FontWeights.Bold });
-        words.Children.Add(new TextBlock { Text = "Consola docente · supervisión en vivo · gestión de aula", Foreground = new SolidColorBrush(Color.FromRgb(201,213,238)), FontSize = 13 });
-        left.Children.Add(words); hg.Children.Add(left);
-        var right = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-        right.Children.Add(new Border { Background = Blue, CornerRadius = new CornerRadius(12), Padding = new Thickness(12,7,12,7), Margin = new Thickness(0,0,9,0), Child = new TextBlock { Text = "2.0 · Classroom", Foreground = Brushes.White, FontWeight = FontWeights.SemiBold } });
-        right.Children.Add(Action("Configuración", (_, _) => ConfigDialog(), Gold, Navy));
-        Grid.SetColumn(right, 1); hg.Children.Add(right); head.Child = hg; root.Children.Add(head);
+        var head=new Border{Background=Navy,Padding=new Thickness(24,14,24,14)};
+        var hg=new Grid();hg.ColumnDefinitions.Add(new ColumnDefinition());hg.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});
+        var left=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};left.Children.Add(BrandMark());
+        var words=new StackPanel{Margin=new Thickness(15,0,0,0),VerticalAlignment=VerticalAlignment.Center};
+        words.Children.Add(new TextBlock{Text="Tablet Escolar",Foreground=Brushes.White,FontSize=30,FontWeight=FontWeights.Bold});
+        words.Children.Add(new TextBlock{Text="Aula · dispositivos · responsables · informes · recuperación",Foreground=new SolidColorBrush(Color.FromRgb(201,213,238)),FontSize=13});
+        left.Children.Add(words);hg.Children.Add(left);
+        var right=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};
+        right.Children.Add(new Border{Background=Blue,CornerRadius=new CornerRadius(12),Padding=new Thickness(12,7,12,7),Margin=new Thickness(0,0,9,0),Child=new TextBlock{Text="2.1 · Gestión",Foreground=Brushes.White,FontWeight=FontWeights.SemiBold}});
+        right.Children.Add(Action("Configuración",(_,_)=>ConfigDialog(),Gold,Navy));Grid.SetColumn(right,1);hg.Children.Add(right);head.Child=hg;root.Children.Add(head);
 
-        var stats = new Grid { Margin = new Thickness(18,7,18,3) };
-        for (int i=0;i<5;i++) stats.ColumnDefinitions.Add(new ColumnDefinition());
-        var a = Stat("EN LÍNEA", "tablets visibles", statOnline, Blue); stats.Children.Add(a);
-        var b = Stat("EN VIVO", "pantallas supervisadas", statLive, Teal); Grid.SetColumn(b,1); stats.Children.Add(b);
-        var c = Stat("ESTUDIANTES", "sesiones activas", statStudents, Blue); Grid.SetColumn(c,2); stats.Children.Add(c);
-        var d = Stat("PROFESORES", "sesiones activas", statTeachers, Navy); Grid.SetColumn(d,3); stats.Children.Add(d);
-        var e = Stat("REVISAR", "sesiones sin pantalla", statAlerts, Gold); Grid.SetColumn(e,4); stats.Children.Add(e);
-        Grid.SetRow(stats,1); root.Children.Add(stats);
+        var stats=new Grid{Margin=new Thickness(18,7,18,3)};for(int i=0;i<5;i++)stats.ColumnDefinitions.Add(new ColumnDefinition());
+        var a=Stat("EN LÍNEA","tablets visibles",statOnline,Blue);stats.Children.Add(a);
+        var b=Stat("EN VIVO","pantallas supervisadas",statLive,Teal);Grid.SetColumn(b,1);stats.Children.Add(b);
+        var c=Stat("ESTUDIANTES","sesiones activas",statStudents,Blue);Grid.SetColumn(c,2);stats.Children.Add(c);
+        var d=Stat("PROFESORES","sesiones activas",statTeachers,Navy);Grid.SetColumn(d,3);stats.Children.Add(d);
+        var e=Stat("REVISAR","sin pantalla / recuperación",statAlerts,Gold);Grid.SetColumn(e,4);stats.Children.Add(e);Grid.SetRow(stats,1);root.Children.Add(stats);
 
-        var bar = new WrapPanel { Margin = new Thickness(18,3,18,4) };
-        bar.Children.Add(Action("Seleccionar en línea", (_,_) => SelectOnline()));
-        bar.Children.Add(Action("Mosaico", (_,_) => OpenMosaic(), SoftBlue, Navy));
-        bar.Children.Add(Action("Mensaje", async (_,_) => await PromptSend("MESSAGE","Enviar mensaje")));
-        bar.Children.Add(Action("Abrir enlace", async (_,_) => await PromptSend("OPEN_URL","Abrir enlace")));
-        bar.Children.Add(Action("Abrir app", async (_,_) => await PromptSend("LAUNCH_APP","Abrir aplicación")));
-        bar.Children.Add(Action("Atención", async (_,_) => await PromptSend("ATTENTION_ON","Modo atención"), Navy));
-        bar.Children.Add(Action("Liberar atención", async (_,_) => await Send("ATTENTION_OFF"), Teal));
-        bar.Children.Add(Action("Cerrar sesión", async (_,_) => await Send("FORCE_LOGOUT"), Red));
-        Grid.SetRow(bar,2); root.Children.Add(bar);
+        var bar=new WrapPanel{Margin=new Thickness(18,3,18,4)};
+        bar.Children.Add(Action("Seleccionar en línea",(_,_)=>SelectOnline()));
+        bar.Children.Add(Action("Mosaico",(_,_)=>OpenMosaic(),SoftBlue,Navy));
+        bar.Children.Add(Action("Mensaje",async(_,_)=>await PromptSend("MESSAGE","Enviar mensaje")));
+        bar.Children.Add(Action("Abrir enlace",async(_,_)=>await PromptSend("OPEN_URL","Abrir enlace")));
+        bar.Children.Add(Action("Abrir app",async(_,_)=>await PromptSend("LAUNCH_APP","Abrir aplicación")));
+        bar.Children.Add(Action("Atención",async(_,_)=>await PromptSend("ATTENTION_ON","Modo atención"),Navy));
+        bar.Children.Add(Action("Liberar atención",async(_,_)=>await SendSelected("ATTENTION_OFF"),Teal));
+        bar.Children.Add(Action("Cerrar sesión",async(_,_)=>await SendSelected("FORCE_LOGOUT"),Red));
+        Grid.SetRow(bar,2);root.Children.Add(bar);
 
-        var tabs = new TabControl { Margin = new Thickness(20,3,20,10), Background = Canvas, BorderThickness = new Thickness(0) };
-        tabs.Items.Add(new TabItem { Header = "  Aula en vivo  ", Content = Card(new ScrollViewer { Content = wall, VerticalScrollBarVisibility = ScrollBarVisibility.Auto }, 4) });
-        grid.ItemsSource = devices;
-        AddCol("Estado","Status",105); AddCol("Tablet","Name",145); AddCol("Usuario","Person",185); AddCol("Rol","RoleText",100); AddCol("Curso","CourseText",105);
-        AddCol("Supervisión","Supervision",130); AddCol("Gestión","Protection",125); AddCol("Batería","Battery",70,"{0}%"); AddCol("Modelo","Model",175); AddCol("Android","Android",75); AddCol("IP","Ip",120);
-        tabs.Items.Add(new TabItem { Header = "  Dispositivos  ", Content = Card(grid,0) });
-        Grid.SetRow(tabs,3); root.Children.Add(tabs);
+        var tabs=new TabControl{Margin=new Thickness(20,3,20,10),Background=Canvas,BorderThickness=new Thickness(0)};
+        tabs.Items.Add(new TabItem{Header="  Aula  ",Content=BuildClassroomTab()});
+        tabs.Items.Add(new TabItem{Header="  Dispositivos  ",Content=BuildDevicesTab()});
+        tabs.Items.Add(new TabItem{Header="  Informes  ",Content=BuildReportsTab()});
+        tabs.Items.Add(new TabItem{Header="  Recuperación  ",Content=BuildRecoveryTab()});
+        Grid.SetRow(tabs,3);root.Children.Add(tabs);
 
-        var foot = new Border { Background = new SolidColorBrush(Color.FromRgb(235,240,248)), Padding = new Thickness(18,8,18,8), Child = footer };
-        Grid.SetRow(foot,4); root.Children.Add(foot); Content = root;
+        var foot=new Border{Background=new SolidColorBrush(Color.FromRgb(235,240,248)),Padding=new Thickness(18,8,18,8),Child=footer};Grid.SetRow(foot,4);root.Children.Add(foot);Content=root;
     }
 
-    void AddCol(string h,string b,double w,string? fmt=null)
+    UIElement BuildClassroomTab()
     {
-        var x = new DataGridTextColumn { Header = h, Binding = new Binding(b), Width = w };
-        if(fmt!=null) ((Binding)x.Binding).StringFormat = fmt; grid.Columns.Add(x);
+        var panel=new Grid();
+        panel.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});panel.RowDefinitions.Add(new RowDefinition());
+        var intro=new StackPanel{Margin=new Thickness(6,8,6,8)};intro.Children.Add(TitleText("Aula en vivo",22));intro.Children.Add(Hint("Supervisión en tiempo real dentro de la red institucional. Las pantallas no se graban por defecto."));panel.Children.Add(intro);
+        var scroll=new ScrollViewer{Content=wall,VerticalScrollBarVisibility=ScrollBarVisibility.Auto};Grid.SetRow(scroll,1);panel.Children.Add(Card(scroll,4));return panel;
+    }
+
+    UIElement BuildDevicesTab()
+    {
+        deviceGrid.ItemsSource=devices;
+        AddCol(deviceGrid,"Estado","Status",110);AddCol(deviceGrid,"Tablet","Name",150);AddCol(deviceGrid,"Responsable","Person",190);AddCol(deviceGrid,"Rol","RoleText",100);AddCol(deviceGrid,"Curso","CourseText",110);
+        AddCol(deviceGrid,"Supervisión","Supervision",135);AddCol(deviceGrid,"Gestión","Protection",130);AddCol(deviceGrid,"Batería","Battery",75,"{0}%");AddCol(deviceGrid,"Modelo","Model",180);AddCol(deviceGrid,"Android","Android",75);AddCol(deviceGrid,"IP","Ip",120);
+        var panel=new Grid();panel.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});panel.RowDefinitions.Add(new RowDefinition());
+        var top=new StackPanel{Margin=new Thickness(6,8,6,8)};top.Children.Add(TitleText("Inventario operativo",22));top.Children.Add(Hint("Identidad permanente del dispositivo, sesión responsable actual y estado técnico."));panel.Children.Add(top);Grid.SetRow(deviceGrid,1);panel.Children.Add(Card(deviceGrid,0));return panel;
+    }
+
+    UIElement BuildReportsTab()
+    {
+        deviceReportGrid.ItemsSource=deviceReports;userReportGrid.ItemsSource=userReports;
+        AddCol(deviceReportGrid,"Tablet","DeviceName",170);AddCol(deviceReportGrid,"ID","DeviceId",140);AddCol(deviceReportGrid,"Uso","UsageText",90);AddCol(deviceReportGrid,"Sesiones","Sessions",85);AddCol(deviceReportGrid,"Usuarios","DistinctUsers",85);AddCol(deviceReportGrid,"Estudiante","StudentText",95);AddCol(deviceReportGrid,"Profesor","TeacherText",95);AddCol(deviceReportGrid,"Bat. prom.","BatteryAverage",85);AddCol(deviceReportGrid,"Bat. mín.","BatteryMinimum",85);AddCol(deviceReportGrid,"Última actividad","LastSeenText",145);
+        AddCol(userReportGrid,"Responsable","User",220);AddCol(userReportGrid,"Rol","Role",100);AddCol(userReportGrid,"Curso","Course",120);AddCol(userReportGrid,"Uso","UsageText",95);AddCol(userReportGrid,"Sesiones","Sessions",85);AddCol(userReportGrid,"Tablets","DevicesUsed",80);AddCol(userReportGrid,"Primera actividad","FirstSeenText",145);AddCol(userReportGrid,"Última actividad","LastSeenText",145);
+
+        var root=new Grid();root.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});root.RowDefinitions.Add(new RowDefinition());
+        var top=new Grid{Margin=new Thickness(6,8,6,8)};top.ColumnDefinitions.Add(new ColumnDefinition());top.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});
+        var title=new StackPanel();title.Children.Add(TitleText("Informes de uso y responsabilidad",22));reportCaption.Text="Últimos 30 días · una muestra aprox. por minuto mientras la consola recibe la tablet";title.Children.Add(reportCaption);top.Children.Add(title);
+        var period=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};period.Children.Add(Action("7 días",(_,_)=>SetReportPeriod(7)));period.Children.Add(Action("30 días",(_,_)=>SetReportPeriod(30),Blue));period.Children.Add(Action("90 días",(_,_)=>SetReportPeriod(90)));Grid.SetColumn(period,1);top.Children.Add(period);root.Children.Add(top);
+        var sub=new TabControl{Background=Canvas,BorderThickness=new Thickness(0)};
+        var dp=new Grid();dp.RowDefinitions.Add(new RowDefinition());dp.RowDefinitions.Add(new RowDefinition{Height=new GridLength(54)});dp.Children.Add(Card(deviceReportGrid,0));var db=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right};db.Children.Add(Action("Actualizar",(_,_)=>RefreshReports()));db.Children.Add(Action("Exportar tablet seleccionada",(_,_)=>ExportDeviceReport(),Blue));Grid.SetRow(db,1);dp.Children.Add(db);sub.Items.Add(new TabItem{Header="  Por dispositivo  ",Content=dp});
+        var up=new Grid();up.RowDefinitions.Add(new RowDefinition());up.RowDefinitions.Add(new RowDefinition{Height=new GridLength(54)});up.Children.Add(Card(userReportGrid,0));var ub=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right};ub.Children.Add(Action("Actualizar",(_,_)=>RefreshReports()));ub.Children.Add(Action("Exportar responsable seleccionado",(_,_)=>ExportUserReport(),Blue));Grid.SetRow(ub,1);up.Children.Add(ub);sub.Items.Add(new TabItem{Header="  Por responsable  ",Content=up});
+        Grid.SetRow(sub,1);root.Children.Add(sub);return root;
+    }
+
+    UIElement BuildRecoveryTab()
+    {
+        recoveryGrid.ItemsSource=recoveryRows;
+        AddCol(recoveryGrid,"Tablet","DeviceName",160);AddCol(recoveryGrid,"Estado","Status",105);AddCol(recoveryGrid,"Responsable","Person",190);AddCol(recoveryGrid,"Batería","Battery",75,"{0}%");AddCol(recoveryGrid,"Recuperación","Recovery",120);AddCol(recoveryGrid,"Ubicación","Location",190);AddCol(recoveryGrid,"Precisión","Accuracy",85);AddCol(recoveryGrid,"Capturada","LocationTime",150);
+        var root=new Grid();root.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});root.RowDefinitions.Add(new RowDefinition());root.RowDefinitions.Add(new RowDefinition{Height=new GridLength(58)});
+        var intro=new StackPanel{Margin=new Thickness(6,8,6,8)};intro.Children.Add(TitleText("Ubicación y recuperación",22));intro.Children.Add(Hint("Seguimiento del dispositivo institucional. La ubicación muestra siempre fecha y precisión; los comandos de esta versión se envían a tablets visibles en la red local."));root.Children.Add(intro);
+        Grid.SetRow(recoveryGrid,1);root.Children.Add(Card(recoveryGrid,0));
+        var bar=new WrapPanel{HorizontalAlignment=HorizontalAlignment.Right,Margin=new Thickness(0,4,0,0)};
+        bar.Children.Add(Action("Solicitar ubicación",async(_,_)=>await RecoveryAction("REQUEST_LOCATION")));
+        bar.Children.Add(Action("Ver en mapa",(_,_)=>OpenMap(),SoftBlue,Navy));
+        bar.Children.Add(Action("Bloquear ahora",async(_,_)=>await RecoveryAction("LOCK_NOW"),Navy));
+        bar.Children.Add(Action("Activar modo pérdida",async(_,_)=>await EnableLostMode(),Red));
+        bar.Children.Add(Action("Marcar recuperada",async(_,_)=>await RecoveryAction("LOST_MODE_OFF"),Teal));
+        Grid.SetRow(bar,2);root.Children.Add(bar);return root;
+    }
+
+    void AddCol(DataGrid g,string h,string b,double w,string? fmt=null)
+    {
+        var x=new DataGridTextColumn{Header=h,Binding=new Binding(b),Width=w};if(fmt!=null)((Binding)x.Binding).StringFormat=fmt;g.Columns.Add(x);
     }
 
     void Configure()
     {
         if(string.IsNullOrWhiteSpace(settings.Key))
         {
-            var k = Ask("Configuración inicial","Ingresa la misma clave técnica configurada en las tablets.",true);
-            if(string.IsNullOrWhiteSpace(k) || k.Length < 10) { footer.Text = "Configura una clave técnica para comenzar."; return; }
-            settings.Key = k; settings.Save();
+            var k=Ask("Configuración inicial","Ingresa la misma clave técnica configurada en las tablets.",true);
+            if(string.IsNullOrWhiteSpace(k)||k.Length<10){footer.Text="Configura una clave técnica para comenzar.";return;}
+            settings.Key=k;settings.Save();
         }
         Start();
     }
 
     void Start()
     {
-        discovery?.Dispose(); devices.Clear(); wall.Children.Clear(); wallImages.Clear(); wallStatus.Clear(); wallSignature = "";
-        registry = new Registry(settings.Key); foreach(var x in registry.Load()) devices.Add(x);
-        commands = new Commands(settings.Key); discovery = new Discovery(settings.Key); discovery.Seen += Incoming;
-        try { discovery.Start(); footer.Text = "● Consola activa · tráfico cifrado · supervisión en tiempo real, no vigilancia histórica"; }
-        catch(Exception e) { footer.Text = "No se pudo abrir UDP 45888: " + e.Message; }
-        RefreshStats(); _ = RefreshWall();
+        discovery?.Dispose();devices.Clear();wall.Children.Clear();wallImages.Clear();wallStatus.Clear();wallSignature="";
+        registry=new Registry(settings.Key);foreach(var x in registry.Load())devices.Add(x);
+        commands=new Commands(settings.Key);discovery=new Discovery(settings.Key);discovery.Seen+=Incoming;
+        try{discovery.Start();footer.Text="● Consola activa · identidad de sesión · informes locales · ubicación firmada · supervisión en tiempo real";}
+        catch(Exception e){footer.Text="No se pudo abrir UDP 45888: "+e.Message;}
+        RefreshStats();RefreshReports();RefreshRecovery();_=RefreshWall();
     }
 
-    void Incoming(Device n) => Dispatcher.Invoke(() =>
+    void Incoming(Device n)=>Dispatcher.Invoke(()=>
     {
-        var d = devices.FirstOrDefault(x => x.Id == n.Id);
-        if(d == null) { devices.Add(n); if(!string.IsNullOrWhiteSpace(n.User)) SessionLog.Change(n.Id,"",n.User,n.Course); }
+        var d=devices.FirstOrDefault(x=>x.Id==n.Id);
+        if(d==null){devices.Add(n);d=n;if(!string.IsNullOrWhiteSpace(n.User))SessionLog.Change(n.Id,"",n.User,n.Course);}
         else
         {
-            string old = d.User;
-            d.DeviceName=n.DeviceName; d.User=n.User; d.Course=n.Course; d.Role=n.Role; d.Model=n.Model; d.Android=n.Android; d.Ip=n.Ip;
-            d.CommandPort=n.CommandPort; d.ScreenPort=n.ScreenPort; d.Battery=n.Battery; d.Screen=n.Screen; d.Managed=n.Managed; d.FrameAgeMs=n.FrameAgeMs; d.Seen=DateTime.Now; d.Identity();
-            if(old != d.User) SessionLog.Change(d.Id,old,d.User,d.Course);
+            string old=d.User;
+            d.DeviceName=n.DeviceName;d.User=n.User;d.Course=n.Course;d.Role=n.Role;d.Model=n.Model;d.Android=n.Android;d.Ip=n.Ip;d.CommandPort=n.CommandPort;d.ScreenPort=n.ScreenPort;d.Battery=n.Battery;d.Screen=n.Screen;d.Managed=n.Managed;d.FrameAgeMs=n.FrameAgeMs;d.Seen=DateTime.Now;d.Identity();
+            if(old!=d.User)SessionLog.Change(d.Id,old,d.User,d.Course);
         }
-        registry?.Save(devices); RefreshStats(); _ = RefreshWall();
+        telemetry.Observe(d);registry?.Save(devices);RefreshStats();RefreshRecovery();_=RefreshWall();
     });
 
     void RefreshStats()
     {
-        foreach(var d in devices) d.Computed();
-        var on = devices.Where(x => x.IsOnline).ToList();
-        statOnline.Text=on.Count.ToString(); statLive.Text=on.Count(x=>!string.IsNullOrWhiteSpace(x.User)&&x.Screen).ToString();
-        statStudents.Text=on.Count(x=>x.Role=="student").ToString(); statTeachers.Text=on.Count(x=>x.Role=="teacher").ToString();
-        statAlerts.Text=on.Count(x=>!string.IsNullOrWhiteSpace(x.User)&&!x.Screen).ToString();
+        foreach(var d in devices)d.Computed();var on=devices.Where(x=>x.IsOnline).ToList();
+        statOnline.Text=on.Count.ToString();statLive.Text=on.Count(x=>!string.IsNullOrWhiteSpace(x.User)&&x.Screen).ToString();statStudents.Text=on.Count(x=>x.Role=="student").ToString();statTeachers.Text=on.Count(x=>x.Role=="teacher").ToString();
+        statAlerts.Text=on.Count(x=>(!string.IsNullOrWhiteSpace(x.User)&&!x.Screen)||LiveRecovery.Get(x.Id).Lost).ToString();
     }
 
-    string WallSignature() => string.Join("|",devices.OrderBy(x=>x.Id).Select(x=>$"{x.Id}:{x.User}:{x.Role}:{x.Course}:{x.IsOnline}:{x.Screen}:{x.Managed}"));
+    void SetReportPeriod(int days){reportPeriod=TimeSpan.FromDays(days);reportCaption.Text=$"Últimos {days} días · seguimiento por tablet y responsable";RefreshReports();}
+    void RefreshReports()
+    {
+        deviceReports.Clear();foreach(var x in telemetry.Summaries(devices,reportPeriod))deviceReports.Add(x);
+        userReports.Clear();foreach(var x in telemetry.SummariesByUser(reportPeriod))userReports.Add(x);
+    }
 
+    void ExportDeviceReport()
+    {
+        if(deviceReportGrid.SelectedItem is not DeviceUsageSummary x){MessageBox.Show("Selecciona una tablet del informe.","Tablet Escolar");return;}
+        try{var p=telemetry.ExportCsv(x.DeviceId,reportPeriod);footer.Text="Informe exportado: "+p;MessageBox.Show("Informe guardado en:\n"+p,"Tablet Escolar");}catch(Exception e){MessageBox.Show(e.Message,"No se pudo exportar");}
+    }
+    void ExportUserReport()
+    {
+        if(userReportGrid.SelectedItem is not UserUsageSummary x){MessageBox.Show("Selecciona un responsable del informe.","Tablet Escolar");return;}
+        try{var p=telemetry.ExportUserCsv(x.User,reportPeriod);footer.Text="Informe exportado: "+p;MessageBox.Show("Informe guardado en:\n"+p,"Tablet Escolar");}catch(Exception e){MessageBox.Show(e.Message,"No se pudo exportar");}
+    }
+
+    void RefreshRecovery()
+    {
+        var selected=(recoveryGrid.SelectedItem as RecoveryRow)?.DeviceId;
+        recoveryRows.Clear();
+        foreach(var d in devices.OrderByDescending(x=>LiveRecovery.Get(x.Id).Lost).ThenByDescending(x=>x.IsOnline).ThenBy(x=>x.Name))
+        {
+            var r=LiveRecovery.Get(d.Id);
+            recoveryRows.Add(new RecoveryRow{DeviceId=d.Id,DeviceName=d.Name,Status=d.Status,Person=d.Person,Battery=d.Battery,Recovery=r.StateText,Location=r.LocationText,Accuracy=r.AccuracyText,LocationTime=r.CapturedText,MapUrl=r.MapUrl});
+        }
+        if(selected!=null)recoveryGrid.SelectedItem=recoveryRows.FirstOrDefault(x=>x.DeviceId==selected);
+    }
+
+    Device? RecoveryDevice()
+    {
+        if(recoveryGrid.SelectedItem is not RecoveryRow row)return null;return devices.FirstOrDefault(x=>x.Id==row.DeviceId);
+    }
+    async Task RecoveryAction(string action)
+    {
+        var d=RecoveryDevice();if(d==null){MessageBox.Show("Selecciona una tablet.","Tablet Escolar");return;}if(!d.IsOnline){MessageBox.Show("La tablet no está visible en la red local. El relay remoto se configura por separado.","Tablet Escolar");return;}
+        var r=await commands!.Send(d,action);footer.Text=r.Item1?$"{d.Name}: comando {action} enviado":$"{d.Name}: {r.Item2}";if(action=="REQUEST_LOCATION")await Task.Delay(1400);RefreshRecovery();
+    }
+    async Task EnableLostMode()
+    {
+        var d=RecoveryDevice();if(d==null){MessageBox.Show("Selecciona una tablet.","Tablet Escolar");return;}
+        if(MessageBox.Show($"¿Activar Modo pérdida en {d.Name}?\n\nEl equipo mostrará una pantalla institucional de recuperación y se bloqueará.","Tablet Escolar",MessageBoxButton.YesNo,MessageBoxImage.Warning)!=MessageBoxResult.Yes)return;
+        await RecoveryAction("LOST_MODE_ON");
+    }
+    void OpenMap()
+    {
+        if(recoveryGrid.SelectedItem is not RecoveryRow row||string.IsNullOrWhiteSpace(row.MapUrl)){MessageBox.Show("La tablet todavía no tiene una ubicación disponible.","Tablet Escolar");return;}
+        try{System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(row.MapUrl){UseShellExecute=true});}catch(Exception e){MessageBox.Show(e.Message,"No se pudo abrir el mapa");}
+    }
+
+    string WallSignature()=>string.Join("|",devices.OrderBy(x=>x.Id).Select(x=>$"{x.Id}:{x.User}:{x.Role}:{x.Course}:{x.IsOnline}:{x.Screen}:{x.Managed}:{LiveRecovery.Get(x.Id).Lost}"));
     void RebuildWall()
     {
-        wall.Children.Clear(); wallImages.Clear(); wallStatus.Clear();
+        wall.Children.Clear();wallImages.Clear();wallStatus.Clear();
         foreach(var d in devices.OrderByDescending(x=>x.IsOnline).ThenBy(x=>x.Name))
         {
-            var g = new Grid(); g.RowDefinitions.Add(new RowDefinition{Height=new GridLength(48)}); g.RowDefinitions.Add(new RowDefinition()); g.RowDefinitions.Add(new RowDefinition{Height=new GridLength(60)});
-            var h = new Grid{Margin=new Thickness(12,8,12,6)}; h.ColumnDefinitions.Add(new ColumnDefinition()); h.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});
-            h.Children.Add(new TextBlock{Text=d.Name,Foreground=Ink,FontSize=15,FontWeight=FontWeights.Bold,VerticalAlignment=VerticalAlignment.Center});
-            var badge = new Border{Background=d.Managed?SoftTeal:new SolidColorBrush(Color.FromRgb(255,246,224)),CornerRadius=new CornerRadius(10),Padding=new Thickness(8,4,8,4),Child=new TextBlock{Text=d.Managed?"Gestionada":"Revisar",Foreground=d.Managed?Teal:Gold,FontSize=11,FontWeight=FontWeights.SemiBold}};
-            Grid.SetColumn(badge,1); h.Children.Add(badge); g.Children.Add(h);
-            var ib = new Border{Background=new SolidColorBrush(Color.FromRgb(15,23,42)),CornerRadius=new CornerRadius(10),Margin=new Thickness(8,0,8,0)}; var im = new Image{Stretch=Stretch.Uniform}; ib.Child=im; Grid.SetRow(ib,1); g.Children.Add(ib); wallImages[d.Id]=im;
-            var st = new TextBlock{Foreground=Muted,FontWeight=FontWeights.SemiBold,Margin=new Thickness(12,7,12,7),TextWrapping=TextWrapping.Wrap}; st.Text=WallText(d); Grid.SetRow(st,2); g.Children.Add(st); wallStatus[d.Id]=st;
-            var card = Card(g,0); card.Width=326; card.Height=270; card.Margin=new Thickness(7); card.Cursor=System.Windows.Input.Cursors.Hand;
-            card.MouseLeftButtonDown += (_,_) => { if(d.IsOnline&&d.Screen&&!string.IsNullOrWhiteSpace(d.User)) new ViewerWindow(d,settings.Key){Owner=this}.Show(); };
-            wall.Children.Add(card);
+            var lost=LiveRecovery.Get(d.Id).Lost;
+            var g=new Grid();g.RowDefinitions.Add(new RowDefinition{Height=new GridLength(48)});g.RowDefinitions.Add(new RowDefinition());g.RowDefinitions.Add(new RowDefinition{Height=new GridLength(60)});
+            var h=new Grid{Margin=new Thickness(12,8,12,6)};h.ColumnDefinitions.Add(new ColumnDefinition());h.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});h.Children.Add(new TextBlock{Text=d.Name,Foreground=Ink,FontSize=15,FontWeight=FontWeights.Bold,VerticalAlignment=VerticalAlignment.Center});
+            var badge=new Border{Background=lost?SoftRed:d.Managed?SoftTeal:SoftGold,CornerRadius=new CornerRadius(10),Padding=new Thickness(8,4,8,4),Child=new TextBlock{Text=lost?"PÉRDIDA":d.Managed?"Gestionada":"Revisar",Foreground=lost?Red:d.Managed?Teal:Gold,FontSize=11,FontWeight=FontWeights.SemiBold}};Grid.SetColumn(badge,1);h.Children.Add(badge);g.Children.Add(h);
+            var ib=new Border{Background=new SolidColorBrush(Color.FromRgb(15,23,42)),CornerRadius=new CornerRadius(10),Margin=new Thickness(8,0,8,0)};var im=new Image{Stretch=Stretch.Uniform};ib.Child=im;Grid.SetRow(ib,1);g.Children.Add(ib);wallImages[d.Id]=im;
+            var st=new TextBlock{Foreground=Muted,FontWeight=FontWeights.SemiBold,Margin=new Thickness(12,7,12,7),TextWrapping=TextWrapping.Wrap};st.Text=WallText(d);Grid.SetRow(st,2);g.Children.Add(st);wallStatus[d.Id]=st;
+            var card=Card(g,0);card.Width=326;card.Height=270;card.Margin=new Thickness(7);card.Cursor=System.Windows.Input.Cursors.Hand;card.MouseLeftButtonDown+=(_,_)=>{if(d.IsOnline&&d.Screen&&!string.IsNullOrWhiteSpace(d.User))new ViewerWindow(d,settings.Key){Owner=this}.Show();};wall.Children.Add(card);
         }
-        if(devices.Count==0) wall.Children.Add(new TextBlock{Text="Esperando tablets en la red institucional…",Foreground=Muted,FontSize=18,Margin=new Thickness(25)});
+        if(devices.Count==0)wall.Children.Add(new TextBlock{Text="Esperando tablets en la red institucional…",Foreground=Muted,FontSize=18,Margin=new Thickness(25)});
     }
+    string WallText(Device d)=>LiveRecovery.Get(d.Id).Lost?$"● MODO PÉRDIDA · {LiveRecovery.Get(d.Id).LocationText}":!d.IsOnline?"○ Sin conexión":string.IsNullOrWhiteSpace(d.User)?"○ Disponible · esperando identificación":d.Screen?$"● EN VIVO · {d.Person}\n{d.RoleText}{(string.IsNullOrWhiteSpace(d.Course)?"":" · "+d.Course)}":$"● {d.Person} · sesión sin pantalla";
 
-    string WallText(Device d) => !d.IsOnline ? "○ Sin conexión" : string.IsNullOrWhiteSpace(d.User) ? "○ Disponible · esperando identificación" : d.Screen ? $"● EN VIVO · {d.Person}\n{d.RoleText}{(string.IsNullOrWhiteSpace(d.Course)?"":" · "+d.Course)}" : $"● {d.Person} · sesión sin pantalla";
-
-    async Task RefreshWall()
-    {
-        if(wallBusy) return; wallBusy=true;
-        try { var s=WallSignature(); if(s!=wallSignature){wallSignature=s;RebuildWall();} await Task.WhenAll(devices.Where(d=>d.IsOnline).Select(FetchFrame)); }
-        finally { wallBusy=false; }
-    }
-
+    async Task RefreshWall(){if(wallBusy)return;wallBusy=true;try{var s=WallSignature();if(s!=wallSignature){wallSignature=s;RebuildWall();}await Task.WhenAll(devices.Where(d=>d.IsOnline&&!LiveRecovery.Get(d.Id).Lost).Select(FetchFrame));}finally{wallBusy=false;}}
     async Task FetchFrame(Device d)
     {
-        if(!wallStatus.TryGetValue(d.Id,out var st)||!wallImages.TryGetValue(d.Id,out var im)) return;
-        if(!d.IsOnline){st.Text="○ Sin conexión";im.Source=null;return;}
-        if(string.IsNullOrWhiteSpace(d.User)){st.Text="○ Disponible · esperando identificación";st.Foreground=Blue;im.Source=null;return;}
-        if(!d.Screen){st.Text=$"● {d.Person} · BLOQUEADA: sin supervisión";st.Foreground=Gold;im.Source=null;return;}
-        try
-        {
-            long ts=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(); using var q=new HttpRequestMessage(HttpMethod.Get,$"http://{d.Ip}:{d.ScreenPort}/screen.jpg");
-            q.Headers.Add("X-Timestamp",ts.ToString()); q.Headers.Add("X-Signature",AcCrypto.Hmac(settings.Key,$"SCREEN\n{ts}")); var r=await http.SendAsync(q);
-            if(!r.IsSuccessStatusCode){st.Text=$"● {d.Person} · esperando cuadro…";st.Foreground=Gold;return;}
-            byte[] z=AcCrypto.Open(settings.Key,await r.Content.ReadAsByteArrayAsync()); using var ms=new MemoryStream(z); var bi=new BitmapImage(); bi.BeginInit(); bi.CacheOption=BitmapCacheOption.OnLoad; bi.DecodePixelWidth=305; bi.StreamSource=ms; bi.EndInit(); bi.Freeze(); im.Source=bi;
-            st.Text=$"● EN VIVO · {d.Person}\n{d.RoleText}{(string.IsNullOrWhiteSpace(d.Course)?"":" · "+d.Course)}"; st.Foreground=Teal;
-        }
-        catch { st.Text=$"● {d.Person} · reconectando…"; st.Foreground=Gold; }
+        if(!wallStatus.TryGetValue(d.Id,out var st)||!wallImages.TryGetValue(d.Id,out var im))return;if(!d.IsOnline){st.Text="○ Sin conexión";im.Source=null;return;}if(string.IsNullOrWhiteSpace(d.User)){st.Text="○ Disponible · esperando identificación";st.Foreground=Blue;im.Source=null;return;}if(!d.Screen){st.Text=$"● {d.Person} · BLOQUEADA: sin supervisión";st.Foreground=Gold;im.Source=null;return;}
+        try{long ts=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();using var q=new HttpRequestMessage(HttpMethod.Get,$"http://{d.Ip}:{d.ScreenPort}/screen.jpg");q.Headers.Add("X-Timestamp",ts.ToString());q.Headers.Add("X-Signature",AcCrypto.Hmac(settings.Key,$"SCREEN\n{ts}"));var r=await http.SendAsync(q);if(!r.IsSuccessStatusCode){st.Text=$"● {d.Person} · esperando cuadro…";st.Foreground=Gold;return;}byte[] z=AcCrypto.Open(settings.Key,await r.Content.ReadAsByteArrayAsync());using var ms=new MemoryStream(z);var bi=new BitmapImage();bi.BeginInit();bi.CacheOption=BitmapCacheOption.OnLoad;bi.DecodePixelWidth=305;bi.StreamSource=ms;bi.EndInit();bi.Freeze();im.Source=bi;st.Text=$"● EN VIVO · {d.Person}\n{d.RoleText}{(string.IsNullOrWhiteSpace(d.Course)?"":" · "+d.Course)}";st.Foreground=Teal;}catch{st.Text=$"● {d.Person} · reconectando…";st.Foreground=Gold;}
     }
 
-    List<Device> Selected() => grid.SelectedItems.Cast<Device>().ToList();
-
-    async Task Send(string action,string value="")
+    List<Device> Selected()=>deviceGrid.SelectedItems.Cast<Device>().ToList();
+    async Task SendSelected(string action,string value="")
     {
-        var s=Selected(); if(s.Count==0){MessageBox.Show("Selecciona al menos una tablet en la pestaña Dispositivos.","Tablet Escolar");return;}
-        var rs=await Task.WhenAll(s.Where(x=>x.IsOnline).Select(async d=>(d,await commands!.Send(d,action,value))));
-        foreach(var x in rs) if(!x.Item2.Item1) footer.Text=$"{x.d.Name}: {x.Item2.Item2}";
+        var s=Selected();if(s.Count==0){MessageBox.Show("Selecciona al menos una tablet en Dispositivos.","Tablet Escolar");return;}var rs=await Task.WhenAll(s.Where(x=>x.IsOnline).Select(async d=>(d,await commands!.Send(d,action,value))));foreach(var x in rs)if(!x.Item2.Item1)footer.Text=$"{x.d.Name}: {x.Item2.Item2}";
     }
-
     async Task PromptSend(string action,string title)
     {
-        string help = action=="MESSAGE"?"Mensaje breve que verá el usuario":action=="OPEN_URL"?"URL completa (https://...)":action=="LAUNCH_APP"?"Nombre de paquete Android, por ejemplo com.google.android.youtube":"Mensaje que ocupará la pantalla durante Atención";
-        var x=Ask(title,help,false); if(!string.IsNullOrWhiteSpace(x)) await Send(action,x);
+        string help=action=="MESSAGE"?"Mensaje breve que verá el usuario":action=="OPEN_URL"?"URL completa (https://...)":action=="LAUNCH_APP"?"Nombre de paquete Android, por ejemplo com.google.android.youtube":"Mensaje que ocupará la pantalla durante Atención";var x=Ask(title,help,false);if(!string.IsNullOrWhiteSpace(x))await SendSelected(action,x);
     }
-
-    void SelectOnline(){grid.SelectedItems.Clear();foreach(var d in devices.Where(x=>x.IsOnline))grid.SelectedItems.Add(d);}
-
-    void OpenMosaic()
-    {
-        var chosen=Selected().Where(x=>x.IsOnline&&x.Screen&&!string.IsNullOrWhiteSpace(x.User)).ToList();
-        if(chosen.Count==0) chosen=devices.Where(x=>x.IsOnline&&x.Screen&&!string.IsNullOrWhiteSpace(x.User)).ToList();
-        if(chosen.Count==0){MessageBox.Show("No hay pantallas supervisadas disponibles.","Tablet Escolar");return;}
-        new MosaicWindow(chosen,settings.Key){Owner=this}.Show();
-    }
-
+    void SelectOnline(){deviceGrid.SelectedItems.Clear();foreach(var d in devices.Where(x=>x.IsOnline))deviceGrid.SelectedItems.Add(d);}
+    void OpenMosaic(){var chosen=Selected().Where(x=>x.IsOnline&&x.Screen&&!string.IsNullOrWhiteSpace(x.User)).ToList();if(chosen.Count==0)chosen=devices.Where(x=>x.IsOnline&&x.Screen&&!string.IsNullOrWhiteSpace(x.User)).ToList();if(chosen.Count==0){MessageBox.Show("No hay pantallas supervisadas disponibles.","Tablet Escolar");return;}new MosaicWindow(chosen,settings.Key){Owner=this}.Show();}
     void ConfigDialog(){var k=Ask("Configuración","Clave técnica del establecimiento",true,settings.Key);if(!string.IsNullOrWhiteSpace(k)&&k.Length>=10){settings.Key=k;settings.Save();Start();}}
 
     string? Ask(string title,string help,bool password,string initial="")
     {
-        var w=new Window{Title=title,Width=540,Height=285,ResizeMode=ResizeMode.NoResize,WindowStartupLocation=WindowStartupLocation.CenterOwner,Owner=this,Background=Canvas,FontFamily=new FontFamily("Segoe UI")};
-        var p=new StackPanel{Margin=new Thickness(28)}; p.Children.Add(new TextBlock{Text=title,FontSize=24,FontWeight=FontWeights.Bold,Foreground=Navy}); p.Children.Add(new TextBlock{Text=help,Margin=new Thickness(0,7,0,14),TextWrapping=TextWrapping.Wrap,Foreground=Muted});
-        Control input; if(password){var q=new PasswordBox{FontSize=16,Padding=new Thickness(12),Password=initial,Background=Brushes.White};input=q;}else{var q=new TextBox{FontSize=16,Padding=new Thickness(12),Text=initial,Background=Brushes.White};input=q;} p.Children.Add(input);
-        var row=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right,Margin=new Thickness(0,18,0,0)}; string? result=null;
-        row.Children.Add(Action("Cancelar",(_,_)=>w.Close())); row.Children.Add(Action("Aceptar",(_,_)=>{result=input is PasswordBox pb?pb.Password:((TextBox)input).Text;w.DialogResult=true;},Blue)); p.Children.Add(row); w.Content=p; w.ShowDialog(); return result;
+        var w=new Window{Title=title,Width=540,Height=285,ResizeMode=ResizeMode.NoResize,WindowStartupLocation=WindowStartupLocation.CenterOwner,Owner=this,Background=Canvas,FontFamily=new FontFamily("Segoe UI")};var p=new StackPanel{Margin=new Thickness(28)};p.Children.Add(TitleText(title));p.Children.Add(Hint(help));Control input;if(password){var q=new PasswordBox{FontSize=16,Padding=new Thickness(12),Password=initial,Background=Brushes.White};input=q;}else{var q=new TextBox{FontSize=16,Padding=new Thickness(12),Text=initial,Background=Brushes.White};input=q;}p.Children.Add(input);var row=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right,Margin=new Thickness(0,18,0,0)};string? result=null;row.Children.Add(Action("Cancelar",(_,_)=>w.Close()));row.Children.Add(Action("Aceptar",(_,_)=>{result=input is PasswordBox pb?pb.Password:((TextBox)input).Text;w.DialogResult=true;},Blue));p.Children.Add(row);w.Content=p;w.ShowDialog();return result;
     }
 }
