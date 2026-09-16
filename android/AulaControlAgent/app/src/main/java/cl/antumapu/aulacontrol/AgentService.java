@@ -165,6 +165,7 @@ public class AgentService extends Service{
   case"LOCK_NOW":ui.post(()->Managed.lockNow(this));return null;
   case"LOST_MODE_ON":ui.post(this::lostOn);return null;
   case"LOST_MODE_OFF":ui.post(this::lostOff);return null;
+  case"SET_RELAY_URL":if(v==null||v.isEmpty()||v.toLowerCase().startsWith("https://")){RelayPrefs.url(this,v);return null;}return"relay-must-use-https";
   default:return"unknown";
  }}
 
@@ -173,7 +174,7 @@ public class AgentService extends Service{
   ui.postDelayed(()->Managed.lockNow(this),900);
  }
  void lostOff(){
-  RecoveryPrefs.lost(this,false);try{stopLockTask();}catch(Exception ignored){}Managed.apply(this);refreshSessionNotification();beacon();
+  RecoveryPrefs.lost(this,false);Managed.apply(this);refreshSessionNotification();beacon();
   try{startActivity(new Intent(this,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TOP));}catch(Exception ignored){}
  }
  void openLostMode(){try{startActivity(new Intent(this,LostModeActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP));}catch(Exception ignored){}}
