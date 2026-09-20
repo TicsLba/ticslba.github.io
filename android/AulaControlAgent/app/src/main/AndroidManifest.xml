@@ -22,7 +22,7 @@
 
  <application
   android:allowBackup="false"
-  android:label="Tablet Escolar"
+  android:label="Aula Móvil"
   android:icon="@drawable/ic_tablet_school_app"
   android:roundIcon="@drawable/ic_tablet_school_app"
   android:theme="@style/AppTheme"
@@ -59,10 +59,11 @@
   </receiver>
 
   <receiver android:name=".BootReceiver" android:exported="false" android:directBootAware="true">
-   <intent-filter>
+   <intent-filter android:priority="1000">
     <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED"/>
     <action android:name="android.intent.action.BOOT_COMPLETED"/>
     <action android:name="android.intent.action.USER_UNLOCKED"/>
+    <action android:name="android.intent.action.USER_PRESENT"/>
     <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
    </intent-filter>
   </receiver>
