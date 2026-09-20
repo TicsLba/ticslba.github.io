@@ -69,6 +69,8 @@ final class Managed {
      */
     static void applyBootOwner(Context c){
         if(!owner(c))return;
+        // Google Play is unavailable by default on the institutional owner.
+        PlayStoreGuard.lock(c);
         homeGuardOn(c);
         try{
             DevicePolicyManager d=dpm(c);ComponentName a=admin(c);String self=c.getPackageName();
@@ -101,6 +103,8 @@ final class Managed {
 
     static void applyGuest(Context c){
         if(!profileOwner(c))return;
+        // Temporary student/teacher users never get direct Play Store access.
+        PlayStoreGuard.lock(c);
         try{
             DevicePolicyManager d=dpm(c);ComponentName a=admin(c);String self=c.getPackageName();
             // Never act as HOME inside a student/teacher session.
@@ -138,6 +142,8 @@ final class Managed {
 
     static void adminUnlock(Context c){
         if(!owner(c))return;
+        // Maintenance mode does not automatically unlock Google Play.
+        PlayStoreGuard.lock(c);
         try{
             DevicePolicyManager d=dpm(c);ComponentName a=admin(c);
             // Keep the access guard installed. A reboot always returns to it.
@@ -179,6 +185,8 @@ final class Managed {
             try{d.clearPackagePersistentPreferredActivities(a,c.getPackageName());}catch(Exception ignored){}
             try{c.getPackageManager().setComponentEnabledSetting(
                     homeGuard(c),PackageManager.COMPONENT_ENABLED_STATE_DISABLED,PackageManager.DONT_KILL_APP);}catch(Exception ignored){}
+            // Return Google Play to Android before releasing institutional management.
+            PlayStoreGuard.unlock(c);
             d.clearDeviceOwnerApp(c.getPackageName());
             return true;
         }catch(Exception e){return false;}
