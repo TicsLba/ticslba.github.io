@@ -84,7 +84,7 @@ public class MainActivity extends Activity {
         LinearLayout h=new LinearLayout(this);h.setOrientation(LinearLayout.VERTICAL);h.setPadding(dp(20),dp(19),dp(20),dp(20));h.setBackground(gradient(NAVY,accent,24));margins(h,0,0,0,12);
         LinearLayout brand=new LinearLayout(this);brand.setGravity(Gravity.CENTER_VERTICAL);
         ImageView logo=new ImageView(this);logo.setImageResource(R.drawable.ic_tablet_school_mark);LinearLayout mark=new LinearLayout(this);mark.setGravity(Gravity.CENTER);mark.setBackground(shape(WHITE,17));mark.addView(logo,new LinearLayout.LayoutParams(dp(42),dp(42)));brand.addView(mark,new LinearLayout.LayoutParams(dp(52),dp(52)));
-        LinearLayout names=new LinearLayout(this);names.setOrientation(LinearLayout.VERTICAL);names.setPadding(dp(12),0,0,0);names.addView(text("Tablet Escolar",22,true,WHITE));names.addView(text("3.0 · Gestión institucional",12,false,Color.rgb(221,230,255)));brand.addView(names);h.addView(brand);
+        LinearLayout names=new LinearLayout(this);names.setOrientation(LinearLayout.VERTICAL);names.setPadding(dp(12),0,0,0);names.addView(text("Tablet Escolar",22,true,WHITE));names.addView(text("3.1 · Gestión institucional",12,false,Color.rgb(221,230,255)));brand.addView(names);h.addView(brand);
         TextView e=text(eyebrow,11,true,Color.rgb(221,235,255));e.setAllCaps(true);e.setLetterSpacing(.08f);e.setPadding(0,dp(17),0,dp(5));h.addView(e);
         h.addView(text(title,29,true,WHITE));TextView s=text(subtitle,14,false,Color.rgb(234,239,255));s.setPadding(0,dp(7),0,0);s.setLineSpacing(0,1.08f);h.addView(s);r.addView(h);
     }
@@ -102,7 +102,7 @@ public class MainActivity extends Activity {
         LinearLayout compat=card();compat.addView(chip(Compatibility.sessionsSupported(this)?"COMPATIBLE":"REVISAR COMPATIBILIDAD",Compatibility.sessionsSupported(this)?TEAL:CORAL,Compatibility.sessionsSupported(this)?Color.rgb(229,250,245):Color.rgb(255,239,241)));compat.addView(text(Compatibility.summary(this),16,true,NAVY));compat.addView(text("Usuarios administrados: "+yes(Compatibility.managedUsers(this))+" · Captura: "+yes(Compatibility.screenCapture(this))+" · Sesión efímera nativa: "+yes(Compatibility.ephemeralNative()),12,false,MUTED));r.addView(compat);
         LinearLayout c=card();c.addView(text("Identidad institucional",19,true,INK));TextView gap=text("Estos datos permanecen en el usuario Propietario.",13,false,MUTED);gap.setPadding(0,dp(4),0,dp(10));c.addView(gap);
         EditText dn=input("Nombre del dispositivo · Ej. TABLET-08",false),key=input("Clave técnica del establecimiento",false),p1=input("Contraseña administrativa",true),p2=input("Repetir contraseña",true);c.addView(dn);c.addView(key);c.addView(p1);c.addView(p2);r.addView(c);
-        Button ok=primary("Activar Tablet Escolar");r.addView(ok);ok.setOnClickListener(v->{String d=dn.getText().toString().trim(),k=key.getText().toString().trim(),p=p1.getText().toString();if(d.length()<2||k.length()<10||p.length()<6){toast("Completa los datos requeridos");return;}if(!p.equals(p2.getText().toString())){toast("Las contraseñas no coinciden");return;}Core.setup(this,d,k,p);SessionState.ownerGate(this);route();});
+        Button ok=primary("Activar Tablet Escolar");r.addView(ok);ok.setOnClickListener(v->{String d=dn.getText().toString().trim(),k=key.getText().toString().trim(),p=p1.getText().toString();if(d.length()<2||k.length()<10||p.length()<6){toast("Completa los datos requeridos");return;}if(!p.equals(p2.getText().toString())){toast("Las contraseñas no coinciden");return;}Core.setup(this,d,k,p);SessionState.ownerGate(this);Managed.homeGuardOn(this);Managed.applyOwner(this);route();});
         setAnimated(sc);
     }
 
@@ -116,7 +116,7 @@ public class MainActivity extends Activity {
     void roleGate(){
         if(!Compatibility.sessionsSupported(this)) { incompatibleUi(); return; }
         new Thread(()->SessionUsers.cleanupSecondaryUsers(this),"TabletEscolarCleanup").start();
-        ScrollView sc=shell();LinearLayout r=root();sc.addView(r);hero(r,"ACCESO AL DISPOSITIVO","¿Quién utilizará esta tablet?","Identifícate para crear un espacio temporal separado. Después usarás Android normalmente.",COBALT);
+        ScrollView sc=shell();LinearLayout r=root();sc.addView(r);hero(r,"ACCESO PRIORITARIO","¿Quién utilizará esta tablet?","Este acceso se protege antes de habilitar Android. Identifícate para crear un espacio temporal separado.",COBALT);
         LinearLayout d=card();d.addView(chip("DISPOSITIVO GESTIONADO",NAVY,Color.rgb(232,237,255)));d.addView(info("EQUIPO",Core.dn(this),COBALT));d.addView(text(Core.id(this)+" · "+Compatibility.summary(this),12,false,MUTED));r.addView(d);
         LinearLayout st=role("E","Estudiante","Nombre, apellido y curso · cierre por inactividad a los 10 min",COBALT),te=role("P","Profesor","Nombre y apellido · cierre por inactividad a los 30 min",TEAL);r.addView(st);r.addView(te);
         TextView privacy=text("Supervisión en tiempo real, no vigilancia histórica. Sin keylogging, sin contraseñas personales y sin grabación histórica por defecto.",12,false,MUTED);privacy.setPadding(dp(3),dp(10),dp(3),dp(12));r.addView(privacy);
