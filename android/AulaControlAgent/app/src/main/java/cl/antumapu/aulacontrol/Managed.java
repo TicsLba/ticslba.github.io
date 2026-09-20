@@ -38,9 +38,11 @@ final class Managed {
         return f;
     }
 
-    // Owner-only boot guard. This is intentionally not a usable launcher:
-    // it has no app grid and only forwards to the institutional access gate.
-    // Temporary student/teacher users keep the manufacturer's normal HOME.
+    /*
+     * This guard exists only in the Device Owner user. It is a security surface,
+     * not an application launcher: it contains no app grid and cannot be used
+     * during student/teacher sessions.
+     */
     static void homeGuardOn(Context c){
         if(!owner(c))return;
         try{
@@ -61,23 +63,37 @@ final class Managed {
         }catch(Exception ignored){}
     }
 
-    static void apply(Context c){if(owner(c)){if(Core.adminMode(c))adminUnlock(c);else applyOwner(c);}else if(profileOwner(c))applyGuest(c);}
-
-    static void applyOwner(Context c){
+    /*
+     * Direct-Boot-safe owner lockdown. No SharedPreferences or credential-
+     * encrypted data is touched here, so it can run from LOCKED_BOOT_COMPLETED.
+     */
+    static void applyBootOwner(Context c){
         if(!owner(c))return;
         homeGuardOn(c);
-        if(Core.adminMode(c))return;
         try{
             DevicePolicyManager d=dpm(c);ComponentName a=admin(c);String self=c.getPackageName();
-            d.setAffiliationIds(a,Collections.singleton(SessionUsers.AFFILIATION));
-            d.setUninstallBlocked(a,self,true);
             try{d.setLockTaskPackages(a,new String[]{self});}catch(Exception ignored){}
+            try{d.setStatusBarDisabled(a,true);}catch(Exception ignored){}
+            try{d.setUninstallBlocked(a,self,true);}catch(Exception ignored){}
             restriction(d,a,UserManager.DISALLOW_UNINSTALL_APPS,true);
             restriction(d,a,UserManager.DISALLOW_APPS_CONTROL,true);
             restriction(d,a,UserManager.DISALLOW_FACTORY_RESET,true);
             restriction(d,a,UserManager.DISALLOW_SAFE_BOOT,true);
             restriction(d,a,UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES,true);
             restriction(d,a,UserManager.DISALLOW_DEBUGGING_FEATURES,true);
+        }catch(Exception ignored){}
+    }
+
+    static void apply(Context c){if(owner(c)){if(Core.adminMode(c))adminUnlock(c);else applyOwner(c);}else if(profileOwner(c))applyGuest(c);}
+
+    static void applyOwner(Context c){
+        if(!owner(c))return;
+        homeGuardOn(c);
+        if(Core.adminMode(c))return;
+        applyBootOwner(c);
+        try{
+            DevicePolicyManager d=dpm(c);ComponentName a=admin(c);String self=c.getPackageName();
+            d.setAffiliationIds(a,Collections.singleton(SessionUsers.AFFILIATION));
             if(Build.VERSION.SDK_INT>=30)try{d.setUserControlDisabledPackages(a,Collections.singletonList(self));}catch(Exception ignored){}
             grantManagedPermissions(c,d,a,self);
         }catch(Exception ignored){}
@@ -124,8 +140,7 @@ final class Managed {
         if(!owner(c))return;
         try{
             DevicePolicyManager d=dpm(c);ComponentName a=admin(c);
-            // Keep the owner-only HOME guard installed. Administration relaxes
-            // policies but never leaves the device unguarded after a reboot.
+            // Keep the access guard installed. A reboot always returns to it.
             homeGuardOn(c);
             restriction(d,a,UserManager.DISALLOW_UNINSTALL_APPS,false);
             restriction(d,a,UserManager.DISALLOW_INSTALL_APPS,false);
@@ -141,7 +156,8 @@ final class Managed {
     }
 
     static void restoreProtection(Context c){Core.adminMode(c,false);applyOwner(c);}
-    static void lockNow(Context c){try{if(managed(c))dpm(c).lockNow();}catch(Exception ignored){}}
+    static void lockNow(Context c){try{if(managed(c))dpm(c).lockNow();}catch(Exception ignored){}
+    }
     static void enter(Activity a){enterGate(a);}
     static void exit(Activity a){exitGate(a);if(owner(a))adminUnlock(a);}
 
