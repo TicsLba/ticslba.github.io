@@ -49,6 +49,7 @@ public class AgentService extends Service {
     }
 
     void idle(){
+  PlayStoreGuard.relockIfExpired(this);
         if(RecoveryPrefs.lost(this)){if(warn)cancelWarning();return;}
         if(!Core.guest(this)||Core.user(this).isEmpty()||!SessionState.isActive(this)){if(warn)cancelWarning();return;}
         if(!ScreenCaptureService.active)return;
