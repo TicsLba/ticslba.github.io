@@ -23,6 +23,7 @@ public class MainActivity extends Activity {
     final Handler ui=new Handler(Looper.getMainLooper());
     long captureAt;
     boolean awaitingCapture;
+    boolean playAccessSession;
 
     @Override public void onCreate(Bundle b){
         super.onCreate(b);
@@ -32,7 +33,15 @@ public class MainActivity extends Activity {
         route();
     }
 
-    @Override protected void onResume(){super.onResume();if(!awaitingCapture&&Core.ready(this))route();}
+    @Override protected void onResume(){
+        super.onResume();
+        if(playAccessSession){
+            playAccessSession=false;
+            PlayStoreGuard.lock(this);
+            toast("Google Play volvió a quedar bloqueado");
+        }
+        if(!awaitingCapture&&Core.ready(this))route();
+    }
     @Override protected void onNewIntent(Intent i){super.onNewIntent(i);setIntent(i);route();}
     @Override public void onUserInteraction(){super.onUserInteraction();if(Core.guest(this)&&SessionState.isActive(this))Core.touch(this);}
     @Override public void onBackPressed(){
@@ -84,7 +93,7 @@ public class MainActivity extends Activity {
         LinearLayout h=new LinearLayout(this);h.setOrientation(LinearLayout.VERTICAL);h.setPadding(dp(20),dp(19),dp(20),dp(20));h.setBackground(gradient(NAVY,accent,24));margins(h,0,0,0,12);
         LinearLayout brand=new LinearLayout(this);brand.setGravity(Gravity.CENTER_VERTICAL);
         ImageView logo=new ImageView(this);logo.setImageResource(R.drawable.ic_tablet_school_mark);LinearLayout mark=new LinearLayout(this);mark.setGravity(Gravity.CENTER);mark.setBackground(shape(WHITE,17));mark.addView(logo,new LinearLayout.LayoutParams(dp(42),dp(42)));brand.addView(mark,new LinearLayout.LayoutParams(dp(52),dp(52)));
-        LinearLayout names=new LinearLayout(this);names.setOrientation(LinearLayout.VERTICAL);names.setPadding(dp(12),0,0,0);names.addView(text("Tablet Escolar",22,true,WHITE));names.addView(text("4.0 · Gestión institucional",12,false,Color.rgb(221,230,255)));brand.addView(names);h.addView(brand);
+        LinearLayout names=new LinearLayout(this);names.setOrientation(LinearLayout.VERTICAL);names.setPadding(dp(12),0,0,0);names.addView(text("Tablet Escolar",22,true,WHITE));names.addView(text("5.4 · Gestión institucional",12,false,Color.rgb(221,230,255)));brand.addView(names);h.addView(brand);
         TextView e=text(eyebrow,11,true,Color.rgb(221,235,255));e.setAllCaps(true);e.setLetterSpacing(.08f);e.setPadding(0,dp(17),0,dp(5));h.addView(e);
         h.addView(text(title,29,true,WHITE));TextView s=text(subtitle,14,false,Color.rgb(234,239,255));s.setPadding(0,dp(7),0,0);s.setLineSpacing(0,1.08f);h.addView(s);r.addView(h);
     }
@@ -215,15 +224,36 @@ public class MainActivity extends Activity {
     void adminPanel(){
         ScrollView sc=shell();LinearLayout r=root();sc.addView(r);hero(r,"MANTENIMIENTO ACTIVO","Administración del dispositivo","Las restricciones institucionales están relajadas temporalmente hasta cerrar este panel.",VIOLET);
         LinearLayout diag=card();diag.addView(chip(Compatibility.sessionsSupported(this)?"COMPATIBILIDAD COMPLETA":"COMPATIBILIDAD PARCIAL",Compatibility.sessionsSupported(this)?TEAL:CORAL,Compatibility.sessionsSupported(this)?Color.rgb(229,250,245):Color.rgb(255,239,241)));diag.addView(info("MODELO",Compatibility.summary(this),VIOLET));diag.addView(text("Usuarios administrados: "+yes(Compatibility.managedUsers(this))+" · Sesión efímera nativa: "+yes(Compatibility.ephemeralNative()),13,false,MUTED));r.addView(diag);
-        Button settings=secondary("Ajustes completos de Android"),usage=secondary("Acceso de uso / inactividad"),apps=secondary("Administrar aplicaciones"),clean=secondary("Limpiar sesiones temporales residuales"),cfg=secondary("Configuración de Tablet Escolar"),release=danger("Liberar Device Owner"),done=primary("Cerrar administración y restaurar protección");r.addView(settings);r.addView(usage);r.addView(apps);r.addView(clean);r.addView(cfg);r.addView(release);r.addView(done);
-        settings.setOnClickListener(v->openSettings());usage.setOnClickListener(v->{try{startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS));}catch(Exception ignored){}});apps.setOnClickListener(v->{try{startActivity(new Intent(Settings.ACTION_APPLICATION_SETTINGS));}catch(Exception ignored){}});clean.setOnClickListener(v->new Thread(()->SessionUsers.cleanupSecondaryUsers(this),"TabletEscolarCleanup").start());cfg.setOnClickListener(v->configUi());release.setOnClickListener(v->confirmRelease());done.setOnClickListener(v->closeAdmin());setAnimated(sc);
+        Button settings=secondary("Ajustes completos de Android"),usage=secondary("Acceso de uso / inactividad"),play=secondary("Abrir Google Play con clave"),apps=secondary("Administrar aplicaciones"),clean=secondary("Limpiar sesiones temporales residuales"),cfg=secondary("Configuración de Tablet Escolar"),release=danger("Liberar Device Owner"),done=primary("Cerrar administración y restaurar protección");r.addView(settings);r.addView(usage);r.addView(play);r.addView(apps);r.addView(clean);r.addView(cfg);r.addView(release);r.addView(done);
+        settings.setOnClickListener(v->openSettings());usage.setOnClickListener(v->{try{startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS));}catch(Exception ignored){}});play.setOnClickListener(v->askPlayStore());apps.setOnClickListener(v->{try{startActivity(new Intent(Settings.ACTION_APPLICATION_SETTINGS));}catch(Exception ignored){}});clean.setOnClickListener(v->new Thread(()->SessionUsers.cleanupSecondaryUsers(this),"TabletEscolarCleanup").start());cfg.setOnClickListener(v->configUi());release.setOnClickListener(v->confirmRelease());done.setOnClickListener(v->closeAdmin());setAnimated(sc);
+    }
+
+    void askPlayStore(){
+        if(!Managed.owner(this)){toast("Google Play sólo puede habilitarse desde el usuario Propietario");return;}
+        if(!PlayStoreGuard.available(this)){toast("Google Play no está instalado en este dispositivo");return;}
+        EditText p=input("Contraseña administrativa",true);
+        new AlertDialog.Builder(this)
+                .setTitle("Acceso protegido a Google Play")
+                .setMessage("Google Play permanece bloqueado por defecto. La clave administrativa lo habilitará temporalmente por hasta 5 minutos.")
+                .setView(p)
+                .setNegativeButton("Cancelar",null)
+                .setPositiveButton("Abrir",(d,w)->{
+                    if(!Core.checkPw(this,p.getText().toString())){
+                        PlayStoreGuard.lock(this);toast("Clave incorrecta");return;
+                    }
+                    if(!PlayStoreGuard.unlockForAdmin(this)){toast("Android no permitió habilitar Google Play");return;}
+                    playAccessSession=true;
+                    if(!PlayStoreGuard.launch(this)){
+                        playAccessSession=false;PlayStoreGuard.lock(this);toast("No se pudo abrir Google Play");
+                    }
+                }).show();
     }
 
     void configUi(){
         ScrollView sc=shell();LinearLayout r=root();sc.addView(r);hero(r,"CONFIGURACIÓN","Identidad técnica","Modifica el nombre del equipo o establece una nueva contraseña administrativa.",COBALT);LinearLayout c=card();EditText dn=input("Nombre del dispositivo",false);dn.setText(Core.dn(this));EditText key=input("Clave técnica",false);key.setText(Core.key(this));EditText pw=input("Nueva contraseña administrativa · opcional",true);c.addView(dn);c.addView(key);c.addView(pw);r.addView(c);Button save=primary("Guardar cambios"),back=secondary("Volver");r.addView(save);r.addView(back);save.setOnClickListener(v->{if(dn.getText().toString().trim().length()<2||key.getText().toString().trim().length()<10){toast("Revisa los campos");return;}Core.config(this,dn.getText().toString(),key.getText().toString(),pw.getText().toString());toast("Configuración guardada");adminPanel();});back.setOnClickListener(v->adminPanel());setAnimated(sc);
     }
 
-    void closeAdmin(){Core.adminMode(this,false);Managed.restoreProtection(this);SessionState.ownerGate(this);Managed.enterGate(this);roleGate();}
+    void closeAdmin(){PlayStoreGuard.lock(this);Core.adminMode(this,false);Managed.restoreProtection(this);SessionState.ownerGate(this);Managed.enterGate(this);roleGate();}
     void confirmRelease(){if(!Managed.owner(this))return;EditText p=input("Repite la contraseña administrativa",true);new AlertDialog.Builder(this).setTitle("Liberar administración del dispositivo").setMessage("Se quitará Tablet Escolar como Device Owner. La aplicación seguirá instalada, pero las protecciones institucionales dejarán de estar activas.").setView(p).setNegativeButton("Cancelar",null).setPositiveButton("Liberar",(d,w)->{if(!Core.checkPw(this,p.getText().toString())){toast("Clave incorrecta");return;}if(Managed.release(this)){Core.adminMode(this,false);toast("Device Owner liberado");route();}else toast("No fue posible liberar Device Owner");}).show();}
     void agent(){try{Intent i=new Intent(this,AgentService.class);if(Build.VERSION.SDK_INT>=26)startForegroundService(i);else startService(i);}catch(Exception ignored){}}
 }
