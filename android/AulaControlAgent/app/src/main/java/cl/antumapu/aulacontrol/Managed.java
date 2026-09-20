@@ -5,9 +5,6 @@ import android.app.Activity;
 import android.app.admin.DevicePolicyManager;
 import android.content.ComponentName;
 import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
-import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.UserManager;
 import java.util.Collections;
@@ -16,7 +13,6 @@ final class Managed {
     private Managed(){}
 
     static ComponentName admin(Context c){return new ComponentName(c,AdminReceiver.class);}
-    static ComponentName homeGuard(Context c){return new ComponentName(c,HomeGateActivity.class);}
     static DevicePolicyManager dpm(Context c){return (DevicePolicyManager)c.getSystemService(Context.DEVICE_POLICY_SERVICE);}
     static boolean owner(Context c){try{return dpm(c)!=null&&dpm(c).isDeviceOwnerApp(c.getPackageName());}catch(Exception e){return false;}}
     static boolean profileOwner(Context c){try{return dpm(c)!=null&&dpm(c).isProfileOwnerApp(c.getPackageName());}catch(Exception e){return false;}}
@@ -32,28 +28,27 @@ final class Managed {
         if(Build.VERSION.SDK_INT>=33)grant(d,a,self,Manifest.permission.POST_NOTIFICATIONS);
     }
 
-    static IntentFilter homeFilter(){
-        IntentFilter f=new IntentFilter(Intent.ACTION_MAIN);
-        f.addCategory(Intent.CATEGORY_HOME);
-        f.addCategory(Intent.CATEGORY_DEFAULT);
-        return f;
-    }
-
-    static void homeGuardOn(Context c){
-        if(!owner(c)||Core.adminMode(c))return;
+    /**
+     * Direct-Boot-safe owner protection. This method never touches
+     * credential-encrypted preferences, so it can be called as soon as Android
+     * emits LOCKED_BOOT_COMPLETED.
+     */
+    static void applyBootOwner(Context c){
+        if(!owner(c))return;
         try{
-            DevicePolicyManager d=dpm(c);ComponentName a=admin(c);ComponentName h=homeGuard(c);
-            c.getPackageManager().setComponentEnabledSetting(h,PackageManager.COMPONENT_ENABLED_STATE_ENABLED,PackageManager.DONT_KILL_APP);
-            try{d.clearPackagePersistentPreferredActivities(a,c.getPackageName());}catch(Exception ignored){}
-            d.addPersistentPreferredActivity(a,homeFilter(),h);
-        }catch(Exception ignored){}
-    }
-
-    static void homeGuardOff(Context c){
-        try{
-            DevicePolicyManager d=dpm(c);ComponentName a=admin(c);
-            if(d!=null&&managed(c))try{d.clearPackagePersistentPreferredActivities(a,c.getPackageName());}catch(Exception ignored){}
-            c.getPackageManager().setComponentEnabledSetting(homeGuard(c),PackageManager.COMPONENT_ENABLED_STATE_DISABLED,PackageManager.DONT_KILL_APP);
+            DevicePolicyManager d=dpm(c);ComponentName a=admin(c);String self=c.getPackageName();
+            // Remove any HOME preference left by experimental 3.x builds. 3.0.4
+            // never registers or becomes HOME.
+            try{d.clearPackagePersistentPreferredActivities(a,self);}catch(Exception ignored){}
+            try{d.setLockTaskPackages(a,new String[]{self});}catch(Exception ignored){}
+            try{d.setStatusBarDisabled(a,true);}catch(Exception ignored){}
+            try{d.setUninstallBlocked(a,self,true);}catch(Exception ignored){}
+            restriction(d,a,UserManager.DISALLOW_UNINSTALL_APPS,true);
+            restriction(d,a,UserManager.DISALLOW_APPS_CONTROL,true);
+            restriction(d,a,UserManager.DISALLOW_FACTORY_RESET,true);
+            restriction(d,a,UserManager.DISALLOW_SAFE_BOOT,true);
+            restriction(d,a,UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES,true);
+            restriction(d,a,UserManager.DISALLOW_DEBUGGING_FEATURES,true);
         }catch(Exception ignored){}
     }
 
@@ -61,20 +56,12 @@ final class Managed {
 
     static void applyOwner(Context c){
         if(!owner(c)||Core.adminMode(c))return;
+        applyBootOwner(c);
         try{
             DevicePolicyManager d=dpm(c);ComponentName a=admin(c);String self=c.getPackageName();
             d.setAffiliationIds(a,Collections.singleton(SessionUsers.AFFILIATION));
-            d.setUninstallBlocked(a,self,true);
-            try{d.setLockTaskPackages(a,new String[]{self});}catch(Exception ignored){}
-            restriction(d,a,UserManager.DISALLOW_UNINSTALL_APPS,true);
-            restriction(d,a,UserManager.DISALLOW_APPS_CONTROL,true);
-            restriction(d,a,UserManager.DISALLOW_FACTORY_RESET,true);
-            restriction(d,a,UserManager.DISALLOW_SAFE_BOOT,true);
-            restriction(d,a,UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES,true);
-            restriction(d,a,UserManager.DISALLOW_DEBUGGING_FEATURES,true);
             if(Build.VERSION.SDK_INT>=30)try{d.setUserControlDisabledPackages(a,Collections.singletonList(self));}catch(Exception ignored){}
             grantManagedPermissions(c,d,a,self);
-            homeGuardOn(c);
         }catch(Exception ignored){}
     }
 
@@ -82,8 +69,8 @@ final class Managed {
         if(!profileOwner(c))return;
         try{
             DevicePolicyManager d=dpm(c);ComponentName a=admin(c);String self=c.getPackageName();
-            // The temporary user must always use the manufacturer's ordinary launcher.
-            homeGuardOff(c);
+            // Temporary users always keep the manufacturer's normal launcher.
+            try{d.clearPackagePersistentPreferredActivities(a,self);}catch(Exception ignored){}
             d.setAffiliationIds(a,Collections.singleton(SessionUsers.AFFILIATION));
             d.setUninstallBlocked(a,self,true);
             try{d.setLockTaskPackages(a,new String[]{self});}catch(Exception ignored){}
@@ -100,23 +87,31 @@ final class Managed {
         }catch(Exception ignored){}
     }
 
-    static void enterGate(Activity a){
-        if(!managed(a)||Core.adminMode(a))return;
+    static void enterBootGate(Activity a){
+        if(!managed(a))return;
         try{
             DevicePolicyManager d=dpm(a);ComponentName c=admin(a);
             try{d.setLockTaskPackages(c,new String[]{a.getPackageName()});}catch(Exception ignored){}
-            if(!d.isLockTaskPermitted(a.getPackageName()))return;
-            a.startLockTask();
+            if(owner(a))try{d.setStatusBarDisabled(c,true);}catch(Exception ignored){}
+            if(d.isLockTaskPermitted(a.getPackageName()))a.startLockTask();
         }catch(Exception ignored){}
     }
 
-    static void exitGate(Activity a){try{a.stopLockTask();}catch(Exception ignored){}}
+    static void enterGate(Activity a){
+        if(!managed(a)||Core.adminMode(a))return;
+        enterBootGate(a);
+    }
+
+    static void exitGate(Activity a){
+        try{a.stopLockTask();}catch(Exception ignored){}
+        if(owner(a)&&Core.adminMode(a))try{dpm(a).setStatusBarDisabled(admin(a),false);}catch(Exception ignored){}
+    }
 
     static void adminUnlock(Context c){
         if(!owner(c))return;
         try{
             DevicePolicyManager d=dpm(c);ComponentName a=admin(c);
-            homeGuardOff(c);
+            try{d.clearPackagePersistentPreferredActivities(a,c.getPackageName());}catch(Exception ignored){}
             restriction(d,a,UserManager.DISALLOW_UNINSTALL_APPS,false);
             restriction(d,a,UserManager.DISALLOW_INSTALL_APPS,false);
             restriction(d,a,UserManager.DISALLOW_APPS_CONTROL,false);
@@ -141,7 +136,6 @@ final class Managed {
             adminUnlock(c);DevicePolicyManager d=dpm(c);ComponentName a=admin(c);
             try{d.setLockTaskPackages(a,new String[]{});}catch(Exception ignored){}
             try{d.clearPackagePersistentPreferredActivities(a,c.getPackageName());}catch(Exception ignored){}
-            try{c.getPackageManager().setComponentEnabledSetting(homeGuard(c),PackageManager.COMPONENT_ENABLED_STATE_DISABLED,PackageManager.DONT_KILL_APP);}catch(Exception ignored){}
             d.clearDeviceOwnerApp(c.getPackageName());
             return true;
         }catch(Exception e){return false;}
