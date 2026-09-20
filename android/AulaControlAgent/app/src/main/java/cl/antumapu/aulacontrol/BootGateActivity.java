@@ -24,8 +24,8 @@ import android.widget.TextView;
  * hands off to the normal Aula Móvil splash/gate.
  */
 public class BootGateActivity extends Activity {
-    private static final int NAVY=Color.rgb(18,35,67), COBALT=Color.rgb(49,89,255),
-            TEAL=Color.rgb(32,199,164), SOFT=Color.rgb(221,230,255);
+    private static final int NAVY=Color.rgb(32,32,32), COBALT=Color.rgb(0,103,192),
+            TEAL=Color.rgb(0,120,212), SOFT=Color.rgb(96,94,92);
     private final Handler ui=new Handler(Looper.getMainLooper());
     private boolean preparing, forwarded;
 
@@ -97,15 +97,15 @@ public class BootGateActivity extends Activity {
         root.setGravity(Gravity.CENTER);
         root.setPadding(dp(30),dp(30),dp(30),dp(30));
         GradientDrawable bg=new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                new int[]{NAVY,Color.rgb(31,55,111),COBALT});
+                new int[]{Color.rgb(243,243,243),Color.rgb(250,250,250),Color.WHITE});
         root.setBackground(bg);
 
-        TextView mark=text("●",34,true,TEAL);root.addView(mark);
-        TextView title=text("Aula Móvil",31,true,Color.WHITE);
+        TextView mark=text("■",30,true,COBALT);root.addView(mark);
+        TextView title=text("Aula Móvil",31,true,NAVY);
         LinearLayout.LayoutParams tp=new LinearLayout.LayoutParams(-2,-2);tp.topMargin=dp(14);root.addView(title,tp);
-        TextView sub=text("Protegiendo el acceso al dispositivo…",15,true,SOFT);
+        TextView sub=text("Preparando acceso institucional…",15,true,SOFT);
         LinearLayout.LayoutParams sp=new LinearLayout.LayoutParams(-2,-2);sp.topMargin=dp(8);root.addView(sub,sp);
-        TextView msg=text("La identificación institucional se abrirá antes de habilitar el uso normal de Android.",13,false,Color.rgb(236,241,255));
+        TextView msg=text("La identificación institucional se abrirá antes de habilitar el uso normal de Android.",13,false,Color.rgb(70,70,70));
         msg.setGravity(Gravity.CENTER);msg.setLineSpacing(0,1.10f);
         LinearLayout.LayoutParams mp=new LinearLayout.LayoutParams(-1,-2);mp.topMargin=dp(18);mp.leftMargin=dp(16);mp.rightMargin=dp(16);root.addView(msg,mp);
 
