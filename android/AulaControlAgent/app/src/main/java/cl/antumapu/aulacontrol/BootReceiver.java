@@ -3,34 +3,50 @@ package cl.antumapu.aulacontrol;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.os.Build;
+import android.os.UserManager;
 
+/**
+ * Boot fallback. The owner HOME guard is the primary mechanism; this receiver
+ * reasserts it and launches the guard when Android/OEM boot ordering allows it.
+ */
 public class BootReceiver extends BroadcastReceiver {
-    @Override public void onReceive(Context c, Intent i) {
-        try {
-            Intent s = new Intent(c, AgentService.class);
-            if (Build.VERSION.SDK_INT >= 26) c.startForegroundService(s); else c.startService(s);
-        } catch (Exception ignored) {}
+    @Override public void onReceive(Context c,Intent i){
+        String action=i==null?"":i.getAction();
 
-        if (Managed.owner(c) && Core.ready(c) && !Core.adminMode(c)) {
-            SessionState.ownerGate(c);
-            Managed.applyOwner(c);
-            launchNow(c);
-            BootGateScheduler.schedule(c);
-        } else if (Managed.profileOwner(c) && Core.ready(c)) {
-            if (!SessionState.isActive(c)) SessionState.guestSetup(c);
-            Managed.applyGuest(c);
-            launchNow(c);
-            BootGateScheduler.schedule(c);
+        if(Managed.owner(c)){
+            Managed.homeGuardOn(c);
+
+            UserManager um=(UserManager)c.getSystemService(Context.USER_SERVICE);
+            boolean unlocked=um==null||um.isUserUnlocked();
+            if(unlocked){
+                try{Core.adminMode(c,false);}catch(Exception ignored){}
+                try{SessionState.ownerGate(c);}catch(Exception ignored){}
+                try{Managed.applyOwner(c);}catch(Exception ignored){}
+            }
+
+            launchOwnerGuard(c);
+            return;
+        }
+
+        if(Managed.profileOwner(c)){
+            if(Intent.ACTION_LOCKED_BOOT_COMPLETED.equals(action))return;
+            try{
+                if(!SessionState.isActive(c))SessionState.guestSetup(c);
+                Managed.applyGuest(c);
+                c.startActivity(new Intent(c,SplashActivity.class)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|
+                                Intent.FLAG_ACTIVITY_CLEAR_TOP|
+                                Intent.FLAG_ACTIVITY_SINGLE_TOP));
+            }catch(Exception ignored){}
         }
     }
 
-    private void launchNow(Context c) {
-        try {
-            c.startActivity(new Intent(c, SplashActivity.class)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK |
-                            Intent.FLAG_ACTIVITY_CLEAR_TOP |
+    private void launchOwnerGuard(Context c){
+        try{
+            c.startActivity(new Intent(c,HomeGateActivity.class)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|
+                            Intent.FLAG_ACTIVITY_CLEAR_TOP|
                             Intent.FLAG_ACTIVITY_SINGLE_TOP));
-        } catch (Exception ignored) {}
+        }catch(Exception ignored){}
     }
 }
