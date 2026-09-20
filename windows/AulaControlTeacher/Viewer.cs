@@ -16,7 +16,7 @@ public class ViewerWindow:Window
  readonly HttpClient http=new(){Timeout=TimeSpan.FromSeconds(2)};
  readonly DispatcherTimer timer=new(){Interval=TimeSpan.FromMilliseconds(850)};
  public ViewerWindow(Device x,string k){
-  d=x;key=k;Title="Tablet Escolar · "+d.Name;Width=940;Height=780;MinWidth=720;MinHeight=560;Background=new SolidColorBrush(Color.FromRgb(14,24,38));WindowStartupLocation=WindowStartupLocation.CenterOwner;
+  d=x;key=k;Title="Aula Móvil · "+d.Name;Width=940;Height=780;MinWidth=720;MinHeight=560;Background=new SolidColorBrush(Color.FromRgb(14,24,38));WindowStartupLocation=WindowStartupLocation.CenterOwner;
   var g=new Grid();g.RowDefinitions.Add(new RowDefinition{Height=new GridLength(64)});g.RowDefinitions.Add(new RowDefinition());
   var h=new Grid{Margin=new Thickness(18,10,18,10)};h.ColumnDefinitions.Add(new ColumnDefinition());h.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});
   var left=new StackPanel();left.Children.Add(new TextBlock{Text=d.Name,Foreground=Brushes.White,FontSize=18,FontWeight=FontWeights.Bold});left.Children.Add(new TextBlock{Text=$"{d.Person} · {d.RoleText}{(string.IsNullOrWhiteSpace(d.Course)?"":" · "+d.Course)}",Foreground=new SolidColorBrush(Color.FromRgb(169,185,201)),FontSize=12});h.Children.Add(left);Grid.SetColumn(state,1);state.VerticalAlignment=VerticalAlignment.Center;h.Children.Add(state);g.Children.Add(h);
@@ -30,7 +30,7 @@ public class MosaicWindow:Window
 {
  readonly List<Device> ds;readonly string key;readonly HttpClient http=new(){Timeout=TimeSpan.FromSeconds(2)};readonly DispatcherTimer timer=new(){Interval=TimeSpan.FromMilliseconds(1300)};readonly Dictionary<string,Image> imgs=new();readonly Dictionary<string,TextBlock> states=new();bool busy;
  public MosaicWindow(List<Device> d,string k){
-  ds=d;key=k;Title="Tablet Escolar · Mosaico del aula";Width=1320;Height=840;MinWidth=900;MinHeight=640;Background=new SolidColorBrush(Color.FromRgb(244,247,251));WindowStartupLocation=WindowStartupLocation.CenterOwner;
+  ds=d;key=k;Title="Aula Móvil · Mosaico del aula";Width=1320;Height=840;MinWidth=900;MinHeight=640;Background=new SolidColorBrush(Color.FromRgb(244,247,251));WindowStartupLocation=WindowStartupLocation.CenterOwner;
   var root=new Grid();root.RowDefinitions.Add(new RowDefinition{Height=new GridLength(72)});root.RowDefinitions.Add(new RowDefinition());
   var head=new Border{Background=new SolidColorBrush(Color.FromRgb(22,50,79)),Padding=new Thickness(20,13,20,13)};var hs=new StackPanel();hs.Children.Add(new TextBlock{Text="Mosaico del aula",Foreground=Brushes.White,FontSize=23,FontWeight=FontWeights.Bold});hs.Children.Add(new TextBlock{Text=$"{ds.Count} pantallas seleccionadas · supervisión en tiempo real",Foreground=new SolidColorBrush(Color.FromRgb(205,217,230)),FontSize=12});head.Child=hs;root.Children.Add(head);
   var wrap=new WrapPanel{Margin=new Thickness(10)};var scroll=new ScrollViewer{Content=wrap,VerticalScrollBarVisibility=ScrollBarVisibility.Auto};Grid.SetRow(scroll,1);root.Children.Add(scroll);Content=root;
