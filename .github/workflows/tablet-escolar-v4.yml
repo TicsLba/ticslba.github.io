@@ -1,0 +1,36 @@
+name: Tablet Escolar 4.0 Android
+
+on:
+  push:
+    branches: [tablet-escolar-v4-0]
+    paths:
+      - 'android/AulaControlAgent/**'
+      - '.github/workflows/tablet-escolar-v4.yml'
+  workflow_dispatch:
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.0'
+      - name: Build Android APKs
+        working-directory: android/AulaControlAgent
+        run: gradle --no-daemon :app:assembleDebug :app:assembleRelease
+      - name: Verify 4.0 manifest has priority owner guard
+        run: |
+          grep -q 'versionName .4.0.0.' android/AulaControlAgent/app/build.gradle
+          grep -q 'android:directBootAware="true"' android/AulaControlAgent/app/src/main/AndroidManifest.xml
+          grep -q 'android:lockTaskMode="if_whitelisted"' android/AulaControlAgent/app/src/main/AndroidManifest.xml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Tablet-Escolar-Android-4.0.0
+          path: |
+            android/AulaControlAgent/app/build/outputs/apk/debug/app-debug.apk
+            android/AulaControlAgent/app/build/outputs/apk/release/app-release-unsigned.apk
