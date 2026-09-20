@@ -1,0 +1,58 @@
+name: AulaMovil 9 clean build
+
+on:
+  push:
+    branches: [ "aulamovil-9-clean-build" ]
+    paths:
+      - 'AulaMovil9/**'
+      - '.github/workflows/aulamovil9-build.yml'
+  workflow_dispatch:
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reconstruct clean source
+        shell: bash
+        run: |
+          cat AulaMovil9/srcparts/part*.b64 | base64 -d > AulaMovil9/source.zip
+          cd AulaMovil9
+          unzip -q source.zip
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Build Android release
+        working-directory: AulaMovil9/android
+        run: gradle --no-daemon assembleRelease
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AulaMovil9-Android-unsigned
+          path: AulaMovil9/android/app/build/outputs/apk/release/app-release-unsigned.apk
+          if-no-files-found: error
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reconstruct clean source
+        shell: pwsh
+        run: |
+          $b64 = (Get-ChildItem AulaMovil9/srcparts/part*.b64 | Sort-Object Name | ForEach-Object { Get-Content $_ -Raw }) -join ''
+          [IO.File]::WriteAllBytes('AulaMovil9/source.zip',[Convert]::FromBase64String($b64))
+          Expand-Archive AulaMovil9/source.zip AulaMovil9 -Force
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Publish Windows x64
+        shell: pwsh
+        run: dotnet publish AulaMovil9/windows/AulaMovilConsole/AulaMovilConsole.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o AulaMovil9/out/windows
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AulaMovil9-Windows-x64
+          path: AulaMovil9/out/windows/AulaMovilConsole-9.0.0.exe
+          if-no-files-found: error
