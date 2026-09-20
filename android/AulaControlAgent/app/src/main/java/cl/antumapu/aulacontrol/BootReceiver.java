@@ -9,7 +9,7 @@ import android.os.UserManager;
 /**
  * Earliest supported boot entry point.
  *
- * Tablet Escolar intentionally does not register as HOME. The Device Owner is
+ * Aula Móvil intentionally does not register as HOME. The Device Owner is
  * allowed to bring its gate forward from the background; Direct Boot plus
  * retries cover OEM boot-order races without replacing the manufacturer launcher.
  */
