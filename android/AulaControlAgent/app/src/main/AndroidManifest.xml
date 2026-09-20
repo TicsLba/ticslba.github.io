@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
  <uses-permission android:name="android.permission.INTERNET"/>
  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
@@ -36,23 +37,20 @@
   </activity>
 
   <!--
-   Owner-only boot guard. Disabled by default, enabled programmatically only in
-   the Device Owner user and made persistent HOME there. It is never the HOME
-   activity of student/teacher temporary users, which keep the OEM launcher.
+   Direct-Boot institutional gate. It is NOT HOME and never replaces the OEM
+   launcher. As Device Owner, Tablet Escolar is allowed to bring this explicit
+   activity forward during boot; Lock Task keeps it in front until Android is
+   ready and the normal access gate can take over.
   -->
   <activity
-   android:name=".HomeGateActivity"
-   android:enabled="false"
-   android:exported="true"
+   android:name=".BootGuardActivity"
+   android:exported="false"
+   android:directBootAware="true"
    android:excludeFromRecents="true"
    android:launchMode="singleTask"
-   android:noHistory="true">
-   <intent-filter>
-    <action android:name="android.intent.action.MAIN"/>
-    <category android:name="android.intent.category.HOME"/>
-    <category android:name="android.intent.category.DEFAULT"/>
-   </intent-filter>
-  </activity>
+   android:lockTaskMode="if_whitelisted"
+   android:showWhenLocked="true"
+   android:turnScreenOn="true"/>
 
   <activity android:name=".MainActivity" android:exported="false" android:launchMode="singleTask"/>
   <activity android:name=".SessionWarningActivity" android:exported="false" android:launchMode="singleTask" android:excludeFromRecents="true"/>
@@ -69,10 +67,11 @@
    </intent-filter>
   </receiver>
 
-  <receiver android:name=".BootReceiver" android:exported="false">
+  <receiver android:name=".BootReceiver" android:exported="false" android:directBootAware="true">
    <intent-filter>
-    <action android:name="android.intent.action.BOOT_COMPLETED"/>
     <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED"/>
+    <action android:name="android.intent.action.BOOT_COMPLETED"/>
+    <action android:name="android.intent.action.USER_UNLOCKED"/>
     <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
    </intent-filter>
   </receiver>
