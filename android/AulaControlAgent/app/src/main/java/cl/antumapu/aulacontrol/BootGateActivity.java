@@ -21,7 +21,7 @@ import android.widget.TextView;
  *
  * It can appear as soon as Android permits Device Owner UI, waits until
  * credential-protected storage is unlocked, reapplies owner policy once, then
- * hands off to the normal Tablet Escolar splash/gate.
+ * hands off to the normal Aula Móvil splash/gate.
  */
 public class BootGateActivity extends Activity {
     private static final int NAVY=Color.rgb(18,35,67), COBALT=Color.rgb(49,89,255),
@@ -66,7 +66,7 @@ public class BootGateActivity extends Activity {
             try{SessionState.ownerGate(this);}catch(Exception ignored){}
             try{Managed.applyOwner(this);}catch(Exception ignored){}
             runOnUiThread(this::forward);
-        },"TabletEscolarBootGate").start();
+        },"AulaMovilBootGate").start();
     }
 
     private void forward(){
@@ -101,7 +101,7 @@ public class BootGateActivity extends Activity {
         root.setBackground(bg);
 
         TextView mark=text("●",34,true,TEAL);root.addView(mark);
-        TextView title=text("Tablet Escolar",31,true,Color.WHITE);
+        TextView title=text("Aula Móvil",31,true,Color.WHITE);
         LinearLayout.LayoutParams tp=new LinearLayout.LayoutParams(-2,-2);tp.topMargin=dp(14);root.addView(title,tp);
         TextView sub=text("Protegiendo el acceso al dispositivo…",15,true,SOFT);
         LinearLayout.LayoutParams sp=new LinearLayout.LayoutParams(-2,-2);sp.topMargin=dp(8);root.addView(sub,sp);
