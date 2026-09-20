@@ -17,6 +17,7 @@
  <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
 
  <queries>
+  <package android:name="com.android.vending"/>
   <intent><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent>
   <intent><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.HOME"/></intent>
  </queries>
@@ -79,6 +80,7 @@
    </intent-filter>
   </receiver>
 
+  <receiver android:name=".PlayRelockReceiver" android:exported="false"/>
   <receiver android:name=".BootReceiver" android:exported="false" android:directBootAware="true">
    <intent-filter>
     <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED"/>
