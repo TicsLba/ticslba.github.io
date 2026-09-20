@@ -14,15 +14,13 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 /**
- * Synchronous owner-only boot/access guard.
+ * Synchronous owner-only institutional access guard.
  *
- * Android must always have a HOME target. To guarantee that the institutional
- * gate is the first usable surface after reboot, the Device Owner sets this
- * tiny activity as HOME only for the owner user. It is not an application
- * launcher: it exposes no apps and immediately forwards to Tablet Escolar.
- *
- * Managed student/teacher users never enable this component and therefore use
- * the manufacturer's ordinary Android launcher once their session is ACTIVE.
+ * The Device Owner makes this the HOME target only for the owner user. This is
+ * deliberately not an application launcher: it exposes no applications and
+ * only holds the screen until Tablet Escolar can present the identification
+ * gate. Student/teacher users never enable this component and always use the
+ * manufacturer's ordinary launcher once their session is ACTIVE.
  */
 public class HomeGateActivity extends Activity {
     private final Handler ui=new Handler(Looper.getMainLooper());
@@ -33,8 +31,16 @@ public class HomeGateActivity extends Activity {
         getWindow().setStatusBarColor(Color.rgb(18,35,67));
         getWindow().setNavigationBarColor(Color.rgb(18,35,67));
         render();
+
+        if(!Managed.owner(this)){
+            Managed.homeGuardOff(this);
+            finish();
+            return;
+        }
+
+        // This path is safe before the credential-encrypted user store opens.
+        Managed.applyBootOwner(this);
         Managed.enterGate(this);
-        Managed.homeGuardOn(this);
         waitUntilUnlocked();
     }
 
@@ -42,13 +48,28 @@ public class HomeGateActivity extends Activity {
         super.onNewIntent(intent);
         setIntent(intent);
         forwarded=false;
+        if(!Managed.owner(this)){
+            Managed.homeGuardOff(this);
+            finish();
+            return;
+        }
+        Managed.applyBootOwner(this);
         Managed.enterGate(this);
         waitUntilUnlocked();
     }
 
     @Override protected void onResume(){
         super.onResume();
-        if(!forwarded)waitUntilUnlocked();
+        if(!forwarded&&Managed.owner(this)){
+            Managed.applyBootOwner(this);
+            Managed.enterGate(this);
+            waitUntilUnlocked();
+        }
+    }
+
+    @Override protected void onDestroy(){
+        ui.removeCallbacksAndMessages(null);
+        super.onDestroy();
     }
 
     @Override public void onBackPressed(){}
@@ -58,7 +79,7 @@ public class HomeGateActivity extends Activity {
         UserManager um=(UserManager)getSystemService(USER_SERVICE);
         boolean unlocked=um==null||um.isUserUnlocked();
         if(!unlocked){
-            ui.postDelayed(this::waitUntilUnlocked,250);
+            ui.postDelayed(this::waitUntilUnlocked,180);
             return;
         }
 
@@ -68,10 +89,16 @@ public class HomeGateActivity extends Activity {
             return;
         }
 
-        // A reboot always closes maintenance mode and returns to the protected gate.
+        // Maintenance never survives a reboot.
         Core.adminMode(this,false);
         SessionState.ownerGate(this);
         Managed.applyOwner(this);
+
+        // A reboot invalidates any old shared session. Remove secondary users
+        // outside the UI thread while the owner gate stays visible.
+        new Thread(()->SessionUsers.cleanupSecondaryUsers(this),
+                "TabletEscolarBootCleanup").start();
+
         startAgent();
         forwardToGate();
     }
@@ -91,7 +118,7 @@ public class HomeGateActivity extends Activity {
                     .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP));
         }catch(Exception ignored){
             forwarded=false;
-            ui.postDelayed(this::forwardToGate,350);
+            ui.postDelayed(this::forwardToGate,250);
             return;
         }
         finish();
@@ -131,13 +158,18 @@ public class HomeGateActivity extends Activity {
         sp.topMargin=dp(17);sp.leftMargin=dp(16);sp.rightMargin=dp(16);
         root.addView(sub,sp);
 
+        TextView boot=text("Arranque protegido · Tablet Escolar 4.0",11,true,Color.rgb(173,197,244));
+        LinearLayout.LayoutParams bp=new LinearLayout.LayoutParams(-2,-2);bp.topMargin=dp(19);
+        root.addView(boot,bp);
+
         setContentView(root);
         mark.setAlpha(0f);mark.setScaleX(.84f);mark.setScaleY(.84f);
-        title.setAlpha(0f);line.setAlpha(0f);sub.setAlpha(0f);
-        mark.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(300).start();
-        title.animate().alpha(1f).setStartDelay(120).setDuration(260).start();
-        line.animate().alpha(1f).setStartDelay(210).setDuration(260).start();
-        sub.animate().alpha(1f).setStartDelay(290).setDuration(260).start();
+        title.setAlpha(0f);line.setAlpha(0f);sub.setAlpha(0f);boot.setAlpha(0f);
+        mark.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(260).start();
+        title.animate().alpha(1f).setStartDelay(90).setDuration(220).start();
+        line.animate().alpha(1f).setStartDelay(160).setDuration(220).start();
+        sub.animate().alpha(1f).setStartDelay(220).setDuration(220).start();
+        boot.animate().alpha(1f).setStartDelay(300).setDuration(220).start();
     }
 
     private TextView text(String s,int size,boolean bold,int color){
