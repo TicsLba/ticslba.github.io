@@ -23,9 +23,9 @@ public class SplashActivity extends Activity {
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
-        BootGateScheduler.cancel(this);
         getWindow().setStatusBarColor(NAVY);
         getWindow().setNavigationBarColor(NAVY);
+        startAgent();
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -116,6 +116,13 @@ public class SplashActivity extends Activity {
                 pulse.animate().alpha(.35f).setDuration(430).start()).start();
 
         new Handler(Looper.getMainLooper()).postDelayed(this::go, 1750);
+    }
+
+    private void startAgent() {
+        try {
+            Intent s = new Intent(this, AgentService.class);
+            if (android.os.Build.VERSION.SDK_INT >= 26) startForegroundService(s); else startService(s);
+        } catch (Exception ignored) {}
     }
 
     private void go() {
