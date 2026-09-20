@@ -9,7 +9,7 @@ import android.os.UserManager;
 import java.util.Collections;
 
 final class SessionUsers {
-    static final String AFFILIATION="tablet-escolar-managed-session-v3";
+    static final String AFFILIATION="aula-movil-managed-session-v7";
     private SessionUsers(){}
 
     static boolean createAndSwitch(Context c,String role,String name,String course){
@@ -32,7 +32,7 @@ final class SessionUsers {
             int flags=DevicePolicyManager.SKIP_SETUP_WIZARD|DevicePolicyManager.LEAVE_ALL_SYSTEM_APPS_ENABLED;
             if(Build.VERSION.SDK_INT>=28)flags|=DevicePolicyManager.MAKE_USER_EPHEMERAL;
 
-            String label=Core.ROLE_TEACHER.equals(role)?"Tablet Escolar · Profesor":"Tablet Escolar · Estudiante";
+            String label=Core.ROLE_TEACHER.equals(role)?"Aula Móvil · Profesor":"Aula Móvil · Estudiante";
             UserHandle u=d.createAndManageUser(Managed.admin(c),label,Managed.admin(c),ex,flags);
             if(u==null)return false;
 
