@@ -13,8 +13,8 @@ android {
         applicationId 'cl.antumapu.aulacontrol'
         minSdk 26
         targetSdk 36
-        versionCode 30004
-        versionName '3.0.4'
+        versionCode 70000
+        versionName '7.0.0'
     }
 
     buildTypes {
