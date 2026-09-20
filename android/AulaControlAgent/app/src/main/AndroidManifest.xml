@@ -29,7 +29,10 @@
   android:theme="@style/AppTheme"
   android:usesCleartextTraffic="true">
 
-  <activity android:name=".SplashActivity" android:exported="true" android:launchMode="singleTask">
+  <activity
+   android:name=".SplashActivity"
+   android:exported="true"
+   android:launchMode="singleTask">
    <intent-filter>
     <action android:name="android.intent.action.MAIN"/>
     <category android:name="android.intent.category.LAUNCHER"/>
@@ -37,9 +40,12 @@
   </activity>
 
   <!--
-   Priority owner gate. Disabled by default and enabled only by the Device Owner.
-   It is a synchronous HOME guard, not an app launcher: it exposes no apps.
-   Student/teacher managed users keep the manufacturer's normal launcher.
+   Owner-only institutional access guard.
+   Android treats this tiny activity as HOME only in the Device Owner user so
+   the OEM desktop cannot become usable before identification after a reboot.
+   It is not an application launcher: it has no app list and immediately opens
+   Tablet Escolar. The component is disabled in student/teacher temporary users,
+   which always keep the manufacturer's normal Android launcher.
   -->
   <activity
    android:name=".HomeGateActivity"
@@ -48,6 +54,7 @@
    android:directBootAware="true"
    android:excludeFromRecents="true"
    android:launchMode="singleTask"
+   android:lockTaskMode="if_whitelisted"
    android:showWhenLocked="true"
    android:turnScreenOn="true">
    <intent-filter>
