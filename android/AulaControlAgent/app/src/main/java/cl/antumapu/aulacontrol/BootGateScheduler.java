@@ -9,10 +9,10 @@ import android.os.Build;
 import android.os.SystemClock;
 
 /**
- * Brings the institutional gate to the foreground after boot without making
- * Tablet Escolar a HOME application. Android 10+ can block a direct
- * startActivity() from BOOT_COMPLETED; an Activity PendingIntent dispatched by
- * AlarmManager is sent by the system and is therefore the supported fallback.
+ * OEM fallback for the explicit Device Owner boot activity launch.
+ *
+ * It still does not make Tablet Escolar HOME: Android's system AlarmManager
+ * sends an Activity PendingIntent back to the Direct-Boot guard.
  */
 final class BootGateScheduler {
     private static final int REQ_FAST = 30110;
@@ -21,12 +21,10 @@ final class BootGateScheduler {
     private BootGateScheduler() {}
 
     static void schedule(Context context) {
-        Context app = context.getApplicationContext();
-        AlarmManager alarms = (AlarmManager) app.getSystemService(Context.ALARM_SERVICE);
+        AlarmManager alarms = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (alarms == null) return;
-
-        scheduleOne(app, alarms, REQ_FAST, 450L);
-        scheduleOne(app, alarms, REQ_RETRY, 2400L);
+        scheduleOne(context, alarms, REQ_FAST, 300L);
+        scheduleOne(context, alarms, REQ_RETRY, 1400L);
     }
 
     static void cancel(Context context) {
@@ -51,20 +49,26 @@ final class BootGateScheduler {
             } else {
                 alarms.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP, when, pi);
             }
-        } catch (SecurityException exactDenied) {
+        } catch (SecurityException denied) {
             try { alarms.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, when, pi); } catch (Exception ignored) {}
         } catch (Exception ignored) {}
     }
 
     private static PendingIntent pending(Context c, int requestCode) {
-        Intent gate = new Intent(c, SplashActivity.class)
+        Intent gate = new Intent(c, BootGuardActivity.class)
                 .setAction("cl.antumapu.aulacontrol.BOOT_GATE." + requestCode)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK |
                         Intent.FLAG_ACTIVITY_CLEAR_TOP |
-                        Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                        Intent.FLAG_ACTIVITY_SINGLE_TOP |
+                        Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
         int flags = PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE;
 
-        if (Build.VERSION.SDK_INT >= 35) {
+        if (Build.VERSION.SDK_INT >= 36) {
+            ActivityOptions options = ActivityOptions.makeBasic();
+            options.setPendingIntentCreatorBackgroundActivityStartMode(
+                    ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOW_ALWAYS);
+            return PendingIntent.getActivity(c, requestCode, gate, flags, options.toBundle());
+        } else if (Build.VERSION.SDK_INT >= 34) {
             ActivityOptions options = ActivityOptions.makeBasic();
             options.setPendingIntentCreatorBackgroundActivityStartMode(
                     ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED);
