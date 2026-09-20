@@ -11,17 +11,17 @@ namespace AulaControlTeacher;
 
 public sealed class TeacherConsoleWindow : Window
 {
-    static readonly SolidColorBrush Navy = Brush("#16324F");
-    static readonly SolidColorBrush Navy2 = Brush("#24445F");
-    static readonly SolidColorBrush Blue = Brush("#3568F2");
-    static readonly SolidColorBrush Teal = Brush("#24A78E");
-    static readonly SolidColorBrush Amber = Brush("#E7A43A");
-    static readonly SolidColorBrush Red = Brush("#D9535F");
-    static readonly SolidColorBrush Ink = Brush("#172033");
-    static readonly SolidColorBrush Muted = Brush("#667085");
+    static readonly SolidColorBrush Navy = Brush("#202020");
+    static readonly SolidColorBrush Navy2 = Brush("#2B2B2B");
+    static readonly SolidColorBrush Blue = Brush("#0067C0");
+    static readonly SolidColorBrush Teal = Brush("#0078D4");
+    static readonly SolidColorBrush Amber = Brush("#FFB900");
+    static readonly SolidColorBrush Red = Brush("#D13438");
+    static readonly SolidColorBrush Ink = Brush("#1F1F1F");
+    static readonly SolidColorBrush Muted = Brush("#605E5C");
     static readonly SolidColorBrush Surface = Brushes.White;
-    static readonly SolidColorBrush CanvasBrush = Brush("#F4F7FB");
-    static readonly SolidColorBrush Line = Brush("#DFE6EF");
+    static readonly SolidColorBrush CanvasBrush = Brush("#F3F3F3");
+    static readonly SolidColorBrush Line = Brush("#D1D1D1");
     static readonly SolidColorBrush SoftBlue = Brush("#EEF3FF");
     static readonly SolidColorBrush SoftTeal = Brush("#EAF8F5");
     static readonly SolidColorBrush SoftAmber = Brush("#FFF6E7");
@@ -52,7 +52,7 @@ public sealed class TeacherConsoleWindow : Window
 
     public TeacherConsoleWindow()
     {
-        Title = "Tablet Escolar · Consola Docente";
+        Title = "Aula Móvil · Consola Docente";
         Width = 1500;
         Height = 900;
         MinWidth = 1120;
@@ -77,7 +77,7 @@ public sealed class TeacherConsoleWindow : Window
         Background = Surface,
         BorderBrush = Line,
         BorderThickness = new Thickness(1),
-        CornerRadius = new CornerRadius(radius),
+        CornerRadius = new CornerRadius(Math.Min(radius, 10)),
         Padding = new Thickness(pad),
         Child = child
     };
@@ -150,16 +150,16 @@ public sealed class TeacherConsoleWindow : Window
         g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
         var left = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-        var mark = new Border { Width = 52, Height = 52, CornerRadius = new CornerRadius(15), Background = Blue, Child = new TextBlock { Text = "TE", Foreground = Brushes.White, FontWeight = FontWeights.Bold, FontSize = 19, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center } };
+        var mark = new Border { Width = 52, Height = 52, CornerRadius = new CornerRadius(15), Background = Blue, Child = new TextBlock { Text = "AM", Foreground = Brushes.White, FontWeight = FontWeights.Bold, FontSize = 19, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center } };
         left.Children.Add(mark);
         var names = new StackPanel { Margin = new Thickness(14, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
-        names.Children.Add(Txt("Tablet Escolar", 26, Brushes.White, FontWeights.Bold));
+        names.Children.Add(Txt("Aula Móvil", 26, Brushes.White, FontWeights.Bold));
         names.Children.Add(Txt("Consola docente · supervisión y gestión de aula", 13, Brush("#CFD9E6")));
         left.Children.Add(names);
         g.Children.Add(left);
 
         var right = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-        right.Children.Add(new Border { Background = Navy2, CornerRadius = new CornerRadius(12), Padding = new Thickness(11, 7, 11, 7), Margin = new Thickness(0, 0, 8, 0), Child = Txt("2.0 · Aula administrada", 12, Brushes.White, FontWeights.SemiBold) });
+        right.Children.Add(new Border { Background = Navy2, CornerRadius = new CornerRadius(12), Padding = new Thickness(11, 7, 11, 7), Margin = new Thickness(0, 0, 8, 0), Child = Txt("7.0 · Aula administrada", 12, Brushes.White, FontWeights.SemiBold) });
         right.Children.Add(ActionButton("Configuración", (_, _) => ConfigDialog(), Amber, true));
         Grid.SetColumn(right, 1);
         g.Children.Add(right);
@@ -431,7 +431,7 @@ public sealed class TeacherConsoleWindow : Window
         {
             var empty = new StackPanel { Margin = new Thickness(28) };
             empty.Children.Add(Txt("Sin tablets para mostrar", 22, Ink, FontWeights.Bold));
-            empty.Children.Add(Txt("Verifica que las tablets estén en la misma red, con la misma clave técnica y con Tablet Escolar activo.", 13, Muted));
+            empty.Children.Add(Txt("Verifica que las tablets estén en la misma red, con la misma clave técnica y con Aula Móvil activo.", 13, Muted));
             wall.Children.Add(empty);
         }
     }
@@ -512,7 +512,7 @@ public sealed class TeacherConsoleWindow : Window
         var list = SelectedDevices();
         if (list.Count == 0)
         {
-            MessageBox.Show("Selecciona al menos una tablet.", "Tablet Escolar", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show("Selecciona al menos una tablet.", "Aula Móvil", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
         if (commands == null) return;
@@ -533,7 +533,7 @@ public sealed class TeacherConsoleWindow : Window
         var list = SelectedDevices().Where(x => x.IsOnline && x.Screen && !string.IsNullOrWhiteSpace(x.User)).ToList();
         if (list.Count == 0)
         {
-            MessageBox.Show("Selecciona tablets que tengan una sesión supervisada activa.", "Tablet Escolar", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show("Selecciona tablets que tengan una sesión supervisada activa.", "Aula Móvil", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
         new MosaicWindow(list, settings.Key) { Owner = this }.Show();
