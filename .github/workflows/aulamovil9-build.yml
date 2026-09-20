@@ -35,6 +35,17 @@ jobs:
           name: AulaMovil9-Android-unsigned
           path: AulaMovil9/android/app/build/outputs/apk/release/app-release-unsigned.apk
           if-no-files-found: error
+      - name: Collect APK signer
+        shell: bash
+        run: |
+          JAR=$(find "$ANDROID_HOME/build-tools" -path '*/lib/apksigner.jar' | sort | tail -1)
+          test -n "$JAR"
+          cp "$JAR" AulaMovil9/apksigner.jar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AulaMovil9-apksigner
+          path: AulaMovil9/apksigner.jar
+          if-no-files-found: error
 
   windows:
     runs-on: windows-latest
