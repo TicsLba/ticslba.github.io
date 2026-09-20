@@ -1,9 +1,9 @@
 <resources>
-    <color name="primary">#3159FF</color>
-    <color name="primary_dark">#172B4D</color>
-    <color name="accent">#20C7A4</color>
-    <color name="surface">#F4F7FB</color>
-    <color name="ink">#172033</color>
-    <color name="muted">#667085</color>
-    <color name="icon_background">#3159FF</color>
+    <color name="primary">#0067C0</color>
+    <color name="primary_dark">#202020</color>
+    <color name="accent">#0078D4</color>
+    <color name="surface">#F3F3F3</color>
+    <color name="ink">#1F1F1F</color>
+    <color name="muted">#605E5C</color>
+    <color name="icon_background">#0067C0</color>
 </resources>
