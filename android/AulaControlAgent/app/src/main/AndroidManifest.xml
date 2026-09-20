@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
  <uses-permission android:name="android.permission.INTERNET"/>
  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
@@ -36,17 +37,19 @@
   </activity>
 
   <!--
-   Owner-only boot guard. Disabled by default, enabled programmatically only in
-   the Device Owner user and made persistent HOME there. It is never the HOME
-   activity of student/teacher temporary users, which keep the OEM launcher.
+   Priority owner gate. Disabled by default and enabled only by the Device Owner.
+   It is a synchronous HOME guard, not an app launcher: it exposes no apps.
+   Student/teacher managed users keep the manufacturer's normal launcher.
   -->
   <activity
    android:name=".HomeGateActivity"
    android:enabled="false"
    android:exported="true"
+   android:directBootAware="true"
    android:excludeFromRecents="true"
    android:launchMode="singleTask"
-   android:noHistory="true">
+   android:showWhenLocked="true"
+   android:turnScreenOn="true">
    <intent-filter>
     <action android:name="android.intent.action.MAIN"/>
     <category android:name="android.intent.category.HOME"/>
@@ -69,10 +72,11 @@
    </intent-filter>
   </receiver>
 
-  <receiver android:name=".BootReceiver" android:exported="false">
+  <receiver android:name=".BootReceiver" android:exported="false" android:directBootAware="true">
    <intent-filter>
-    <action android:name="android.intent.action.BOOT_COMPLETED"/>
     <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED"/>
+    <action android:name="android.intent.action.BOOT_COMPLETED"/>
+    <action android:name="android.intent.action.USER_UNLOCKED"/>
     <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
    </intent-filter>
   </receiver>
