@@ -22,11 +22,12 @@ public class AdminReceiver extends DeviceAdminReceiver {
         }
 
         if(Managed.owner(c)){
+            // Arm the synchronous owner guard before doing anything else.
+            Managed.applyBootOwner(c);
             SessionState.ownerGate(c);
-            Managed.homeGuardOn(c);
             Managed.applyOwner(c);
             launchOwner(c);
-            new Handler(Looper.getMainLooper()).postDelayed(()->launchOwner(c),450);
+            new Handler(Looper.getMainLooper()).postDelayed(()->launchOwner(c),300);
         }
     }
 
