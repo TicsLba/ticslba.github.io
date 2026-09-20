@@ -52,7 +52,8 @@ final class BootGateScheduler {
         int flags=PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE;
         if(Build.VERSION.SDK_INT>=35){
             ActivityOptions options=ActivityOptions.makeBasic();
-            options.setPendingIntentCreatorBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED);
+            if(Build.VERSION.SDK_INT>=36) options.setPendingIntentCreatorBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOW_ALWAYS);
+            else options.setPendingIntentCreatorBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED);
             return PendingIntent.getActivity(c,requestCode,gate,flags,options.toBundle());
         }
         return PendingIntent.getActivity(c,requestCode,gate,flags);
