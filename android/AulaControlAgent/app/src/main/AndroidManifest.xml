@@ -35,24 +35,13 @@
    </intent-filter>
   </activity>
 
-  <!--
-   Owner-only boot guard. Disabled by default, enabled programmatically only in
-   the Device Owner user and made persistent HOME there. It is never the HOME
-   activity of student/teacher temporary users, which keep the OEM launcher.
-  -->
+  <!-- Direct-Boot institutional gate. It is NOT a HOME/launcher activity. -->
   <activity
-   android:name=".HomeGateActivity"
-   android:enabled="false"
-   android:exported="true"
+   android:name=".BootGateActivity"
+   android:exported="false"
+   android:directBootAware="true"
    android:excludeFromRecents="true"
-   android:launchMode="singleTask"
-   android:noHistory="true">
-   <intent-filter>
-    <action android:name="android.intent.action.MAIN"/>
-    <category android:name="android.intent.category.HOME"/>
-    <category android:name="android.intent.category.DEFAULT"/>
-   </intent-filter>
-  </activity>
+   android:launchMode="singleTask"/>
 
   <activity android:name=".MainActivity" android:exported="false" android:launchMode="singleTask"/>
   <activity android:name=".SessionWarningActivity" android:exported="false" android:launchMode="singleTask" android:excludeFromRecents="true"/>
@@ -69,10 +58,11 @@
    </intent-filter>
   </receiver>
 
-  <receiver android:name=".BootReceiver" android:exported="false">
+  <receiver android:name=".BootReceiver" android:exported="false" android:directBootAware="true">
    <intent-filter>
-    <action android:name="android.intent.action.BOOT_COMPLETED"/>
     <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED"/>
+    <action android:name="android.intent.action.BOOT_COMPLETED"/>
+    <action android:name="android.intent.action.USER_UNLOCKED"/>
     <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
    </intent-filter>
   </receiver>
