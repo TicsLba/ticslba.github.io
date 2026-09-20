@@ -84,7 +84,7 @@ public class MainActivity extends Activity {
         LinearLayout h=new LinearLayout(this);h.setOrientation(LinearLayout.VERTICAL);h.setPadding(dp(20),dp(19),dp(20),dp(20));h.setBackground(gradient(NAVY,accent,24));margins(h,0,0,0,12);
         LinearLayout brand=new LinearLayout(this);brand.setGravity(Gravity.CENTER_VERTICAL);
         ImageView logo=new ImageView(this);logo.setImageResource(R.drawable.ic_tablet_school_mark);LinearLayout mark=new LinearLayout(this);mark.setGravity(Gravity.CENTER);mark.setBackground(shape(WHITE,17));mark.addView(logo,new LinearLayout.LayoutParams(dp(42),dp(42)));brand.addView(mark,new LinearLayout.LayoutParams(dp(52),dp(52)));
-        LinearLayout names=new LinearLayout(this);names.setOrientation(LinearLayout.VERTICAL);names.setPadding(dp(12),0,0,0);names.addView(text("Tablet Escolar",22,true,WHITE));names.addView(text("3.1 · Gestión institucional",12,false,Color.rgb(221,230,255)));brand.addView(names);h.addView(brand);
+        LinearLayout names=new LinearLayout(this);names.setOrientation(LinearLayout.VERTICAL);names.setPadding(dp(12),0,0,0);names.addView(text("Tablet Escolar",22,true,WHITE));names.addView(text("4.0 · Gestión institucional",12,false,Color.rgb(221,230,255)));brand.addView(names);h.addView(brand);
         TextView e=text(eyebrow,11,true,Color.rgb(221,235,255));e.setAllCaps(true);e.setLetterSpacing(.08f);e.setPadding(0,dp(17),0,dp(5));h.addView(e);
         h.addView(text(title,29,true,WHITE));TextView s=text(subtitle,14,false,Color.rgb(234,239,255));s.setPadding(0,dp(7),0,0);s.setLineSpacing(0,1.08f);h.addView(s);r.addView(h);
     }
