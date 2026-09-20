@@ -27,7 +27,7 @@ public class PrivacyGateActivity extends Activity{
   add(card,"Protección institucional","El dispositivo puede bloquear desinstalaciones y aplicar restricciones de seguridad mientras está administrado.");
   TextView note=t("Supervisión en tiempo real, no vigilancia histórica.",14,true,TEAL);note.setPadding(0,dp(16),0,dp(8));card.addView(note);
   Button ok=new Button(this);ok.setText("Entendido · continuar");ok.setTextColor(Color.WHITE);ok.setTextSize(16);ok.setTypeface(null,1);ok.setAllCaps(false);ok.setBackground(shape(BLUE,14));ok.setPadding(dp(16),dp(13),dp(16),dp(13));LinearLayout.LayoutParams bp=new LinearLayout.LayoutParams(-1,-2);bp.setMargins(0,dp(18),0,dp(6));root.addView(ok,bp);ok.setOnClickListener(v->{Core.privacyAccepted(this,true);go();});
-  TextView foot=t("Tablet Escolar 2.0 · Gestión de aula y dispositivos",12,false,MUTED);foot.setGravity(Gravity.CENTER);foot.setPadding(0,dp(12),0,0);root.addView(foot);setContentView(sc);
+  TextView foot=t("Tablet Escolar 4.0 · Gestión de aula y dispositivos",12,false,MUTED);foot.setGravity(Gravity.CENTER);foot.setPadding(0,dp(12),0,0);root.addView(foot);setContentView(sc);
  }
  void add(LinearLayout c,String title,String body){TextView a=t(title,15,true,NAVY);a.setPadding(0,dp(10),0,dp(3));c.addView(a);TextView b=t(body,13,false,MUTED);b.setLineSpacing(0,1.08f);c.addView(b);}
  void go(){Class<?> target=GuestSession.requiresIntervention(this)?CleanupRecoveryActivity.class:MainActivity.class;Intent i=new Intent(this,target);i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP);startActivity(i);finish();}
