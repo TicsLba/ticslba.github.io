@@ -16,10 +16,10 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 public class SplashActivity extends Activity {
-    private static final int NAVY = Color.rgb(18, 35, 67);
-    private static final int COBALT = Color.rgb(49, 89, 255);
-    private static final int TEAL = Color.rgb(32, 199, 164);
-    private static final int SOFT = Color.rgb(221, 230, 255);
+    private static final int NAVY = Color.rgb(32, 32, 32);
+    private static final int COBALT = Color.rgb(0, 103, 192);
+    private static final int TEAL = Color.rgb(0, 120, 212);
+    private static final int SOFT = Color.rgb(96, 94, 92);
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -32,10 +32,10 @@ public class SplashActivity extends Activity {
         root.setGravity(Gravity.CENTER);
         root.setPadding(dp(28), dp(28), dp(28), dp(28));
         GradientDrawable bg = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                new int[]{NAVY, Color.rgb(31, 55, 111), COBALT});
+                new int[]{Color.rgb(243,243,243), Color.rgb(250,250,250), Color.WHITE});
         root.setBackground(bg);
 
-        TextView chip = text("VERIFICACIÓN DE SEGURIDAD", 11, true, TEAL);
+        TextView chip = text("AULA MÓVIL · 7.0", 11, true, COBALT);
         chip.setLetterSpacing(.10f);
         LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(-2, -2);
         cp.bottomMargin = dp(18);
@@ -44,7 +44,7 @@ public class SplashActivity extends Activity {
         LinearLayout mark = new LinearLayout(this);
         mark.setGravity(Gravity.CENTER);
         GradientDrawable circle = new GradientDrawable();
-        circle.setColor(Color.WHITE);
+        circle.setColor(Color.rgb(0,103,192));
         circle.setCornerRadius(dp(28));
         mark.setBackground(circle);
         ImageView logo = new ImageView(this);
@@ -52,19 +52,19 @@ public class SplashActivity extends Activity {
         mark.addView(logo, new LinearLayout.LayoutParams(dp(82), dp(82)));
         root.addView(mark, new LinearLayout.LayoutParams(dp(108), dp(108)));
 
-        TextView title = text("Tablet Escolar", 31, true, Color.WHITE);
+        TextView title = text("Aula Móvil", 31, true, NAVY);
         LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(-2, -2);
         tp.topMargin = dp(22);
         root.addView(title, tp);
 
-        TextView sub = text("Acceso seguro al dispositivo institucional", 15, true, SOFT);
+        TextView sub = text("Acceso institucional · diseño Fluent", 15, true, SOFT);
         LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(-2, -2);
         sp.topMargin = dp(8);
         root.addView(sub, sp);
 
         TextView security = text(
                 "Por seguridad, Android se habilita sólo después de identificar al usuario y preparar una sesión protegida.",
-                13, false, Color.rgb(236, 241, 255));
+                13, false, Color.rgb(70, 70, 70));
         security.setGravity(Gravity.CENTER);
         security.setLineSpacing(0, 1.10f);
         LinearLayout.LayoutParams secp = new LinearLayout.LayoutParams(-1, -2);
@@ -75,7 +75,7 @@ public class SplashActivity extends Activity {
 
         TextView privacy = text(
                 "No captura, guarda ni entrega contraseñas personales, PIN ni claves secretas de otras aplicaciones.",
-                12, false, Color.rgb(207, 220, 249));
+                12, false, Color.rgb(96, 94, 92));
         privacy.setGravity(Gravity.CENTER);
         privacy.setLineSpacing(0, 1.08f);
         LinearLayout.LayoutParams prp = new LinearLayout.LayoutParams(-1, -2);
