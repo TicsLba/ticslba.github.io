@@ -57,7 +57,7 @@ public sealed class TelemetryStore
 
     public TelemetryStore()
     {
-        dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TabletEscolar", "telemetry");
+        dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AulaMovil", "telemetry");
         Directory.CreateDirectory(dir);
     }
 
@@ -221,7 +221,7 @@ public sealed class TelemetryStore
     {
         var since = DateTime.Now - period;
         var rows = ReadSince(since).Where(x => x.DeviceId == deviceId).OrderBy(x => x.Timestamp).ToList();
-        var outDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Tablet Escolar", "Informes");
+        var outDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Aula Móvil", "Informes");
         Directory.CreateDirectory(outDir);
         var path = Path.Combine(outDir, $"{Safe(deviceId)}_{DateTime.Now:yyyyMMdd_HHmm}.csv");
         var sb = new StringBuilder("timestamp,device_id,user,session_active,role,course,battery,managed\r\n");
@@ -239,7 +239,7 @@ public sealed class TelemetryStore
         var key = UserKey(user);
         var since = DateTime.Now - period;
         var rows = ReadSince(since).Where(x => UserKey(x.User).Equals(key, StringComparison.OrdinalIgnoreCase)).OrderBy(x => x.Timestamp).ToList();
-        var outDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Tablet Escolar", "Informes");
+        var outDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Aula Móvil", "Informes");
         Directory.CreateDirectory(outDir);
         var path = Path.Combine(outDir, $"usuario_{Safe(CleanDisplay(user))}_{DateTime.Now:yyyyMMdd_HHmm}.csv");
         var sb = new StringBuilder("timestamp,user,device_id,role,course,battery,managed\r\n");
