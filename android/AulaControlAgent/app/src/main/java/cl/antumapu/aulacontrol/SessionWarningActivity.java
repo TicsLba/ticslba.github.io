@@ -13,7 +13,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 public class SessionWarningActivity extends Activity {
-    private static final int NAVY=Color.rgb(23,43,77), COBALT=Color.rgb(49,89,255), CORAL=Color.rgb(244,91,105), MUTED=Color.rgb(102,112,133);
+    private static final int NAVY=Color.rgb(32,32,32), COBALT=Color.rgb(0,103,192), CORAL=Color.rgb(209,52,56), MUTED=Color.rgb(96,94,92);
     private CountDownTimer timer;
 
     @Override public void onCreate(Bundle b){
@@ -24,8 +24,8 @@ public class SessionWarningActivity extends Activity {
     }
 
     private void render(){
-        LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setGravity(Gravity.CENTER);root.setPadding(dp(24),dp(24),dp(24),dp(24));root.setBackgroundColor(Color.rgb(241,245,253));
-        LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setPadding(dp(26),dp(25),dp(26),dp(24));card.setBackground(round(Color.WHITE,24));
+        LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setGravity(Gravity.CENTER);root.setPadding(dp(24),dp(24),dp(24),dp(24));root.setBackgroundColor(Color.rgb(243,243,243));
+        LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setPadding(dp(26),dp(25),dp(26),dp(24));card.setBackground(round(Color.WHITE,12));
         TextView chip=t("PROTECCIÓN DE SESIÓN",12,true,CORAL);card.addView(chip);
         TextView title=t("¿Sigues usando la tablet?",27,true,NAVY);title.setPadding(0,dp(13),0,dp(7));card.addView(title);
         TextView body=t("Cerraremos esta sesión para proteger tus datos si no confirmas que sigues aquí.",15,false,MUTED);card.addView(body);
@@ -43,7 +43,7 @@ public class SessionWarningActivity extends Activity {
     @Override public void onBackPressed(){}
 
     private static final class IntentAction{static final String KEEP="AC_KEEP",LOGOUT="AC_LOGOUT";}
-    private Button button(String s,int fill,int fg){Button b=new Button(this);b.setText(s);b.setTextColor(fg);b.setTextSize(16);b.setTypeface(null,1);b.setAllCaps(false);b.setBackground(round(fill,15));LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.setMargins(0,dp(6),0,dp(6));b.setLayoutParams(p);return b;}
+    private Button button(String s,int fill,int fg){Button b=new Button(this);b.setText(s);b.setTextColor(fg);b.setTextSize(16);b.setTypeface(null,1);b.setAllCaps(false);b.setBackground(round(fill,8));LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.setMargins(0,dp(6),0,dp(6));b.setLayoutParams(p);return b;}
     private TextView t(String s,int z,boolean bold,int color){TextView v=new TextView(this);v.setText(s);v.setTextSize(z);v.setTextColor(color);if(bold)v.setTypeface(null,1);return v;}
     private GradientDrawable round(int color,int r){GradientDrawable g=new GradientDrawable();g.setColor(color);g.setCornerRadius(dp(r));return g;}
     private int dp(int n){return(int)(n*getResources().getDisplayMetrics().density+.5f);}
