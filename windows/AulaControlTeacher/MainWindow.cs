@@ -12,16 +12,16 @@ namespace AulaControlTeacher;
 
 public class MainWindow : Window
 {
-    static readonly SolidColorBrush Blue = new(Color.FromRgb(49,89,255));
-    static readonly SolidColorBrush Navy = new(Color.FromRgb(23,43,77));
-    static readonly SolidColorBrush Teal = new(Color.FromRgb(32,199,164));
-    static readonly SolidColorBrush Gold = new(Color.FromRgb(245,180,61));
-    static readonly SolidColorBrush Red = new(Color.FromRgb(202,61,71));
-    static readonly SolidColorBrush Ink = new(Color.FromRgb(23,32,51));
-    static readonly SolidColorBrush Muted = new(Color.FromRgb(102,112,133));
-    static readonly SolidColorBrush Canvas = new(Color.FromRgb(244,247,251));
-    static readonly SolidColorBrush Line = new(Color.FromRgb(221,228,239));
-    static readonly SolidColorBrush SoftBlue = new(Color.FromRgb(232,237,255));
+    static readonly SolidColorBrush Blue = new(Color.FromRgb(0,103,192));
+    static readonly SolidColorBrush Navy = new(Color.FromRgb(32,32,32));
+    static readonly SolidColorBrush Teal = new(Color.FromRgb(0,120,212));
+    static readonly SolidColorBrush Gold = new(Color.FromRgb(255,185,0));
+    static readonly SolidColorBrush Red = new(Color.FromRgb(209,52,56));
+    static readonly SolidColorBrush Ink = new(Color.FromRgb(31,31,31));
+    static readonly SolidColorBrush Muted = new(Color.FromRgb(96,94,92));
+    static readonly SolidColorBrush Canvas = new(Color.FromRgb(243,243,243));
+    static readonly SolidColorBrush Line = new(Color.FromRgb(209,209,209));
+    static readonly SolidColorBrush SoftBlue = new(Color.FromRgb(239,246,252));
     static readonly SolidColorBrush SoftTeal = new(Color.FromRgb(229,250,245));
     static readonly SolidColorBrush SoftGold = new(Color.FromRgb(255,247,226));
     static readonly SolidColorBrush SoftRed = new(Color.FromRgb(255,238,240));
@@ -59,7 +59,7 @@ public class MainWindow : Window
 
     public MainWindow()
     {
-        Title = "Tablet Escolar · Centro de gestión";
+        Title = "Aula Móvil · Centro de gestión";
         Width = 1560;
         Height = 920;
         MinWidth = 1180;
@@ -100,7 +100,7 @@ public class MainWindow : Window
     Border Card(UIElement child,double pad=16) => new()
     {
         Background = Brushes.White,
-        CornerRadius = new CornerRadius(18),
+        CornerRadius = new CornerRadius(12),
         Padding = new Thickness(pad),
         BorderBrush = Line,
         BorderThickness = new Thickness(1),
@@ -140,7 +140,7 @@ public class MainWindow : Window
 
     UIElement BrandMark()
     {
-        var box=new Border{Width=58,Height=58,CornerRadius=new CornerRadius(16),Background=Blue};
+        var box=new Border{Width=58,Height=58,CornerRadius=new CornerRadius(8),Background=Blue};
         var g=new Grid();
         var tablet=new Border{Width=29,Height=38,CornerRadius=new CornerRadius(5),BorderBrush=Brushes.White,BorderThickness=new Thickness(3),HorizontalAlignment=HorizontalAlignment.Center,VerticalAlignment=VerticalAlignment.Center};
         var dot=new Border{Width=4,Height=4,CornerRadius=new CornerRadius(2),Background=Brushes.White,HorizontalAlignment=HorizontalAlignment.Center,VerticalAlignment=VerticalAlignment.Bottom,Margin=new Thickness(0,0,0,7)};
@@ -160,11 +160,11 @@ public class MainWindow : Window
         var hg=new Grid();hg.ColumnDefinitions.Add(new ColumnDefinition());hg.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});
         var left=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};left.Children.Add(BrandMark());
         var words=new StackPanel{Margin=new Thickness(15,0,0,0),VerticalAlignment=VerticalAlignment.Center};
-        words.Children.Add(new TextBlock{Text="Tablet Escolar",Foreground=Brushes.White,FontSize=30,FontWeight=FontWeights.Bold});
+        words.Children.Add(new TextBlock{Text="Aula Móvil",Foreground=Brushes.White,FontSize=30,FontWeight=FontWeights.Bold});
         words.Children.Add(new TextBlock{Text="Aula · dispositivos · responsables · informes · recuperación",Foreground=new SolidColorBrush(Color.FromRgb(201,213,238)),FontSize=13});
         left.Children.Add(words);hg.Children.Add(left);
         var right=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};
-        right.Children.Add(new Border{Background=Blue,CornerRadius=new CornerRadius(12),Padding=new Thickness(12,7,12,7),Margin=new Thickness(0,0,9,0),Child=new TextBlock{Text="2.1 · Gestión",Foreground=Brushes.White,FontWeight=FontWeights.SemiBold}});
+        right.Children.Add(new Border{Background=Blue,CornerRadius=new CornerRadius(12),Padding=new Thickness(12,7,12,7),Margin=new Thickness(0,0,9,0),Child=new TextBlock{Text="7.0 · Gestión",Foreground=Brushes.White,FontWeight=FontWeights.SemiBold}});
         right.Children.Add(Action("Configuración",(_,_)=>ConfigDialog(),Gold,Navy));Grid.SetColumn(right,1);hg.Children.Add(right);head.Child=hg;root.Children.Add(head);
 
         var stats=new Grid{Margin=new Thickness(18,7,18,3)};for(int i=0;i<5;i++)stats.ColumnDefinitions.Add(new ColumnDefinition());
@@ -332,13 +332,13 @@ public class MainWindow : Window
 
     void ExportDeviceReport()
     {
-        if(deviceReportGrid.SelectedItem is not DeviceUsageSummary x){MessageBox.Show("Selecciona una tablet del informe.","Tablet Escolar");return;}
-        try{var p=telemetry.ExportCsv(x.DeviceId,reportPeriod);footer.Text="Informe exportado: "+p;MessageBox.Show("Informe guardado en:\n"+p,"Tablet Escolar");}catch(Exception e){MessageBox.Show(e.Message,"No se pudo exportar");}
+        if(deviceReportGrid.SelectedItem is not DeviceUsageSummary x){MessageBox.Show("Selecciona una tablet del informe.","Aula Móvil");return;}
+        try{var p=telemetry.ExportCsv(x.DeviceId,reportPeriod);footer.Text="Informe exportado: "+p;MessageBox.Show("Informe guardado en:\n"+p,"Aula Móvil");}catch(Exception e){MessageBox.Show(e.Message,"No se pudo exportar");}
     }
     void ExportUserReport()
     {
-        if(userReportGrid.SelectedItem is not UserUsageSummary x){MessageBox.Show("Selecciona un responsable del informe.","Tablet Escolar");return;}
-        try{var p=telemetry.ExportUserCsv(x.User,reportPeriod);footer.Text="Informe exportado: "+p;MessageBox.Show("Informe guardado en:\n"+p,"Tablet Escolar");}catch(Exception e){MessageBox.Show(e.Message,"No se pudo exportar");}
+        if(userReportGrid.SelectedItem is not UserUsageSummary x){MessageBox.Show("Selecciona un responsable del informe.","Aula Móvil");return;}
+        try{var p=telemetry.ExportUserCsv(x.User,reportPeriod);footer.Text="Informe exportado: "+p;MessageBox.Show("Informe guardado en:\n"+p,"Aula Móvil");}catch(Exception e){MessageBox.Show(e.Message,"No se pudo exportar");}
     }
 
     void RefreshRecovery()
@@ -364,19 +364,19 @@ public class MainWindow : Window
 
     async Task RecoveryAction(string action)
     {
-        var d=RecoveryDevice();if(d==null){MessageBox.Show("Selecciona una tablet.","Tablet Escolar");return;}
+        var d=RecoveryDevice();if(d==null){MessageBox.Show("Selecciona una tablet.","Aula Móvil");return;}
         var r=await SendSmart(d,action);footer.Text=r.Item1?$"{d.Name}: comando {action} enviado":$"{d.Name}: {r.Item2}";
         if(action=="REQUEST_LOCATION"){await Task.Delay(1400);await SyncRemote();}RefreshRecovery();
     }
     async Task EnableLostMode()
     {
-        var d=RecoveryDevice();if(d==null){MessageBox.Show("Selecciona una tablet.","Tablet Escolar");return;}
-        if(MessageBox.Show($"¿Activar Modo pérdida en {d.Name}?\n\nEl equipo mostrará una pantalla institucional de recuperación, reforzará ubicación cuando sea posible y se bloqueará.","Tablet Escolar",MessageBoxButton.YesNo,MessageBoxImage.Warning)!=MessageBoxResult.Yes)return;
+        var d=RecoveryDevice();if(d==null){MessageBox.Show("Selecciona una tablet.","Aula Móvil");return;}
+        if(MessageBox.Show($"¿Activar Modo pérdida en {d.Name}?\n\nEl equipo mostrará una pantalla institucional de recuperación, reforzará ubicación cuando sea posible y se bloqueará.","Aula Móvil",MessageBoxButton.YesNo,MessageBoxImage.Warning)!=MessageBoxResult.Yes)return;
         await RecoveryAction("LOST_MODE_ON");
     }
     void OpenMap()
     {
-        if(recoveryGrid.SelectedItem is not RecoveryRow row||string.IsNullOrWhiteSpace(row.MapUrl)){MessageBox.Show("La tablet todavía no tiene una ubicación disponible.","Tablet Escolar");return;}
+        if(recoveryGrid.SelectedItem is not RecoveryRow row||string.IsNullOrWhiteSpace(row.MapUrl)){MessageBox.Show("La tablet todavía no tiene una ubicación disponible.","Aula Móvil");return;}
         try{System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(row.MapUrl){UseShellExecute=true});}catch(Exception e){MessageBox.Show(e.Message,"No se pudo abrir el mapa");}
     }
 
@@ -408,7 +408,7 @@ public class MainWindow : Window
     List<Device> Selected()=>deviceGrid.SelectedItems.Cast<Device>().ToList();
     async Task SendSelected(string action,string value="")
     {
-        var s=Selected();if(s.Count==0){MessageBox.Show("Selecciona al menos una tablet en Dispositivos.","Tablet Escolar");return;}
+        var s=Selected();if(s.Count==0){MessageBox.Show("Selecciona al menos una tablet en Dispositivos.","Aula Móvil");return;}
         foreach(var d in s){var r=await SendSmart(d,action,value);if(!r.Item1)footer.Text=$"{d.Name}: {r.Item2}";}
     }
     async Task PromptSend(string action,string title)
@@ -417,19 +417,19 @@ public class MainWindow : Window
     }
     async Task PushRelayToSelected()
     {
-        if(!relaySettings.Enabled){MessageBox.Show("Primero configura una URL HTTPS de Relay desde Configuración.","Tablet Escolar");return;}
-        var s=Selected().Where(IsLocal).ToList();if(s.Count==0){MessageBox.Show("Selecciona tablets visibles por LAN para vincular el relay.","Tablet Escolar");return;}
+        if(!relaySettings.Enabled){MessageBox.Show("Primero configura una URL HTTPS de Relay desde Configuración.","Aula Móvil");return;}
+        var s=Selected().Where(IsLocal).ToList();if(s.Count==0){MessageBox.Show("Selecciona tablets visibles por LAN para vincular el relay.","Aula Móvil");return;}
         foreach(var d in s){var r=await commands!.Send(d,"SET_RELAY_URL",relaySettings.Url);if(!r.Item1){footer.Text=$"{d.Name}: {r.Item2}";return;}}
-        MessageBox.Show($"Relay configurado en {s.Count} tablet(s). Las futuras sesiones temporales heredarán esta configuración.","Tablet Escolar");
+        MessageBox.Show($"Relay configurado en {s.Count} tablet(s). Las futuras sesiones temporales heredarán esta configuración.","Aula Móvil");
     }
     void SelectOnline(){deviceGrid.SelectedItems.Clear();foreach(var d in devices.Where(x=>x.IsOnline))deviceGrid.SelectedItems.Add(d);}
-    void OpenMosaic(){var chosen=Selected().Where(x=>IsLocal(x)&&x.Screen&&!string.IsNullOrWhiteSpace(x.User)).ToList();if(chosen.Count==0)chosen=devices.Where(x=>IsLocal(x)&&x.Screen&&!string.IsNullOrWhiteSpace(x.User)).ToList();if(chosen.Count==0){MessageBox.Show("No hay pantallas LAN supervisadas disponibles.","Tablet Escolar");return;}new MosaicWindow(chosen,settings.Key){Owner=this}.Show();}
+    void OpenMosaic(){var chosen=Selected().Where(x=>IsLocal(x)&&x.Screen&&!string.IsNullOrWhiteSpace(x.User)).ToList();if(chosen.Count==0)chosen=devices.Where(x=>IsLocal(x)&&x.Screen&&!string.IsNullOrWhiteSpace(x.User)).ToList();if(chosen.Count==0){MessageBox.Show("No hay pantallas LAN supervisadas disponibles.","Aula Móvil");return;}new MosaicWindow(chosen,settings.Key){Owner=this}.Show();}
 
     void ConfigDialog()
     {
         var k=Ask("Configuración","Clave técnica del establecimiento",true,settings.Key);if(string.IsNullOrWhiteSpace(k)||k.Length<10)return;
-        var ru=Ask("Relay remoto","URL HTTPS del relay de Tablet Escolar. Déjala vacía para trabajar sólo por LAN.",false,relaySettings.Url)??relaySettings.Url;
-        if(!string.IsNullOrWhiteSpace(ru)&&(!Uri.TryCreate(ru,UriKind.Absolute,out var u)||!u.Scheme.Equals("https",StringComparison.OrdinalIgnoreCase))){MessageBox.Show("El relay debe usar una URL HTTPS válida.","Tablet Escolar");return;}
+        var ru=Ask("Relay remoto","URL HTTPS del relay de Aula Móvil. Déjala vacía para trabajar sólo por LAN.",false,relaySettings.Url)??relaySettings.Url;
+        if(!string.IsNullOrWhiteSpace(ru)&&(!Uri.TryCreate(ru,UriKind.Absolute,out var u)||!u.Scheme.Equals("https",StringComparison.OrdinalIgnoreCase))){MessageBox.Show("El relay debe usar una URL HTTPS válida.","Aula Móvil");return;}
         settings.Key=k;settings.Save();relaySettings.Url=ru.Trim();relaySettings.Save();Start();
     }
 
