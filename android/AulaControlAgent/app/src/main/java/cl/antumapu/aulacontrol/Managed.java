@@ -10,6 +10,7 @@ import android.os.UserManager;
 import java.util.Collections;
 
 final class Managed {
+    static final String PLAY_STORE="com.android.vending";
     private Managed(){}
 
     static ComponentName admin(Context c){return new ComponentName(c,AdminReceiver.class);}
@@ -27,9 +28,18 @@ final class Managed {
         if(Build.VERSION.SDK_INT>=33)grant(d,a,self,Manifest.permission.POST_NOTIFICATIONS);
     }
 
+    static void setPlayStoreBlocked(Context c,DevicePolicyManager d,ComponentName a,boolean blocked){
+        try{c.getPackageManager().getApplicationInfo(PLAY_STORE,0);}catch(Exception absent){return;}
+        boolean changed=false;
+        try{changed=d.setApplicationHidden(a,PLAY_STORE,blocked);}catch(Exception ignored){}
+        if(!changed&&Build.VERSION.SDK_INT>=24)try{d.setPackagesSuspended(a,new String[]{PLAY_STORE},blocked);}catch(Exception ignored){}
+    }
+
+    static boolean playStorePresent(Context c){try{c.getPackageManager().getApplicationInfo(PLAY_STORE,0);return true;}catch(Exception e){return false;}}
+
     static void clearLegacyHome(Context c,DevicePolicyManager d,ComponentName a){
         // Removes any persistent HOME preference left by experimental/older builds.
-        // Tablet Escolar 3.0.4 does not declare a HOME component.
+        // Aula Móvil 3.0.4 does not declare a HOME component.
         try{d.clearPackagePersistentPreferredActivities(a,c.getPackageName());}catch(Exception ignored){}
     }
 
@@ -51,6 +61,7 @@ final class Managed {
             restriction(d,a,UserManager.DISALLOW_DEBUGGING_FEATURES,true);
             if(Build.VERSION.SDK_INT>=30)try{d.setUserControlDisabledPackages(a,Collections.singletonList(self));}catch(Exception ignored){}
             grantManagedPermissions(c,d,a,self);
+            setPlayStoreBlocked(c,d,a,true);
         }catch(Exception ignored){}
     }
 
@@ -72,6 +83,7 @@ final class Managed {
             restriction(d,a,UserManager.DISALLOW_CONFIG_WIFI,false);
             restriction(d,a,UserManager.DISALLOW_BLUETOOTH,false);
             grantManagedPermissions(c,d,a,self);
+            setPlayStoreBlocked(c,d,a,true);
         }catch(Exception ignored){}
     }
 
@@ -102,6 +114,7 @@ final class Managed {
             d.setUninstallBlocked(a,c.getPackageName(),false);
             try{d.setLockTaskPackages(a,new String[]{});}catch(Exception ignored){}
             try{d.setStatusBarDisabled(a,false);}catch(Exception ignored){}
+            setPlayStoreBlocked(c,d,a,false);
         }catch(Exception ignored){}
     }
 
