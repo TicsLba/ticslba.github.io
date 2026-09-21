@@ -35,6 +35,7 @@ public class AgentService extends Service {
         ex.scheduleAtFixedRate(this::idle,5,5,TimeUnit.SECONDS);
         ex.scheduleAtFixedRate(this::locationTick,4,60,TimeUnit.SECONDS);
         ex.scheduleAtFixedRate(()->RemoteRelay.pulse(this),5,15,TimeUnit.SECONDS);
+        ex.scheduleAtFixedRate(()->UsageReporter.tick(this),20,60,TimeUnit.SECONDS);
         new Thread(this::server,"AulaMovilCmd").start();
         if(RecoveryPrefs.lost(this))ui.post(this::openLostMode);
     }
@@ -144,7 +145,7 @@ public class AgentService extends Service {
     void attention(String v){try{startActivity(new Intent(this,AttentionActivity.class).putExtra("message",v).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TOP));}catch(Exception ignored){}}
     void launchApp(String pkg){try{Intent i=getPackageManager().getLaunchIntentForPackage(pkg);if(i!=null){i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);startActivity(i);}}catch(Exception ignored){}}
     void message(String v){Notification n=builder("msg",NotificationManager.IMPORTANCE_HIGH).setContentTitle("Mensaje del docente · Aula Móvil").setContentText(v).setStyle(new Notification.BigTextStyle().bigText(v)).setSmallIcon(android.R.drawable.ic_dialog_info).build();((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).notify(1003,n);}
-    void url(String v){try{Uri u=Uri.parse(v);if(!"http".equalsIgnoreCase(u.getScheme())&&!"https".equalsIgnoreCase(u.getScheme()))return;Intent i=new Intent(Intent.ACTION_VIEW,u).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);startActivity(i);}catch(Exception ignored){}}
+    void url(String v){try{Uri u=Uri.parse(v);if(!"http".equalsIgnoreCase(u.getScheme())&&!"https".equalsIgnoreCase(u.getScheme()))return;Intent i=new Intent(Intent.ACTION_VIEW,u).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);startActivity(i);UsageReporter.managedUrl(this,v);}catch(Exception ignored){}}
 
     Notification note(){boolean lost=RecoveryPrefs.lost(this);String who=Core.user(this).isEmpty()?Core.dn(this):Core.user(this)+" · "+Core.roleLabel(this);Notification.Builder b=builder("agent",lost?NotificationManager.IMPORTANCE_HIGH:NotificationManager.IMPORTANCE_LOW).setContentTitle(lost?"Aula Móvil · MODO PÉRDIDA":"Aula Móvil · protección activa").setContentText(lost?Core.dn(this)+" · recuperación activa":who).setSmallIcon(lost?android.R.drawable.ic_lock_lock:android.R.drawable.presence_online).setOngoing(true).setOnlyAlertOnce(true);if(Core.guest(this)&&!Core.user(this).isEmpty()){Intent lo=new Intent(this,AgentService.class).setAction(LOGOUT);PendingIntent lp=PendingIntent.getService(this,202,lo,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);b.addAction(new Notification.Action.Builder(null,"Cerrar sesión",lp).build());}return b.build();}
     Notification.Builder builder(String ch,int imp){NotificationManager nm=(NotificationManager)getSystemService(NOTIFICATION_SERVICE);if(Build.VERSION.SDK_INT>=26&&nm.getNotificationChannel(ch)==null)nm.createNotificationChannel(new NotificationChannel(ch,"Aula Móvil",imp));return Build.VERSION.SDK_INT>=26?new Notification.Builder(this,ch):new Notification.Builder(this);}
