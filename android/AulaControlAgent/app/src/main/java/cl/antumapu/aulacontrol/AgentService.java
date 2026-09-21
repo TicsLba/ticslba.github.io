@@ -30,7 +30,7 @@ public class AgentService extends Service {
         ex.scheduleAtFixedRate(this::idle,5,5,TimeUnit.SECONDS);
         ex.scheduleAtFixedRate(this::locationTick,4,60,TimeUnit.SECONDS);
         ex.scheduleAtFixedRate(()->RemoteRelay.pulse(this),8,30,TimeUnit.SECONDS);
-        new Thread(this::server,"TabletEscolarCmd").start();
+        new Thread(this::server,"AulaMovilCmd").start();
         if(RecoveryPrefs.lost(this))ui.post(this::openLostMode);
     }
 
@@ -64,7 +64,7 @@ public class AgentService extends Service {
         if(warn||Core.user(this).isEmpty()||!SessionState.isActive(this))return;warn=true;
         Intent ki=new Intent(this,AgentService.class).setAction(KEEP),lo=new Intent(this,AgentService.class).setAction(LOGOUT);
         PendingIntent kp=PendingIntent.getService(this,201,ki,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE),lp=PendingIntent.getService(this,202,lo,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
-        Notification.Builder b=builder("agent",NotificationManager.IMPORTANCE_HIGH).setContentTitle("Tablet Escolar · ¿sigues ahí?").setContentText("La sesión se cerrará en 30 segundos").setSmallIcon(android.R.drawable.ic_dialog_alert).setOngoing(true).setOnlyAlertOnce(true).addAction(new Notification.Action.Builder(null,"Seguiré usando",kp).build()).addAction(new Notification.Action.Builder(null,"Cerrar sesión",lp).build());
+        Notification.Builder b=builder("agent",NotificationManager.IMPORTANCE_HIGH).setContentTitle("Aula Móvil · ¿sigues ahí?").setContentText("La sesión se cerrará en 30 segundos").setSmallIcon(android.R.drawable.ic_dialog_alert).setOngoing(true).setOnlyAlertOnce(true).addAction(new Notification.Action.Builder(null,"Seguiré usando",kp).build()).addAction(new Notification.Action.Builder(null,"Cerrar sesión",lp).build());
         ((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).notify(SESSION_NOTIFICATION,b.build());
         try{startActivity(new Intent(this,SessionWarningActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP));}catch(Exception ignored){}
         ui.removeCallbacks(autoLogout);ui.postDelayed(autoLogout,WARN);
@@ -76,7 +76,7 @@ public class AgentService extends Service {
 
     void logout(){
         if(RecoveryPrefs.lost(this)){openLostMode();return;}warn=false;ui.removeCallbacks(autoLogout);
-        if(Core.guest(this)){SessionState.set(this,SessionState.State.CLOSING);Core.supervisionStarted(this,false);stopService(new Intent(this,ScreenCaptureService.class));ui.post(this::openGate);new Thread(()->SessionUsers.logoutGuest(this),"TabletEscolarLogout").start();}
+        if(Core.guest(this)){SessionState.set(this,SessionState.State.CLOSING);Core.supervisionStarted(this,false);stopService(new Intent(this,ScreenCaptureService.class));ui.post(this::openGate);new Thread(()->SessionUsers.logoutGuest(this),"AulaMovilLogout").start();}
         else ui.post(this::openGate);
     }
 
@@ -102,9 +102,9 @@ public class AgentService extends Service {
     void openLostMode(){try{startActivity(new Intent(this,LostModeActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP));}catch(Exception ignored){}}
     void attention(String v){try{startActivity(new Intent(this,AttentionActivity.class).putExtra("message",v).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TOP));}catch(Exception ignored){}}
     void launchApp(String pkg){try{Intent i=getPackageManager().getLaunchIntentForPackage(pkg);if(i!=null){i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);startActivity(i);}}catch(Exception ignored){}}
-    void message(String v){Notification n=builder("msg",NotificationManager.IMPORTANCE_HIGH).setContentTitle("Mensaje del docente · Tablet Escolar").setContentText(v).setStyle(new Notification.BigTextStyle().bigText(v)).setSmallIcon(android.R.drawable.ic_dialog_info).build();((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).notify(1003,n);}
+    void message(String v){Notification n=builder("msg",NotificationManager.IMPORTANCE_HIGH).setContentTitle("Mensaje del docente · Aula Móvil").setContentText(v).setStyle(new Notification.BigTextStyle().bigText(v)).setSmallIcon(android.R.drawable.ic_dialog_info).build();((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).notify(1003,n);}
     void url(String v){try{Uri u=Uri.parse(v);if(!"http".equalsIgnoreCase(u.getScheme())&&!"https".equalsIgnoreCase(u.getScheme()))return;Intent i=new Intent(Intent.ACTION_VIEW,u).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);startActivity(i);}catch(Exception ignored){}}
 
-    Notification note(){boolean lost=RecoveryPrefs.lost(this);String who=Core.user(this).isEmpty()?Core.dn(this):Core.user(this)+" · "+Core.roleLabel(this);Notification.Builder b=builder("agent",lost?NotificationManager.IMPORTANCE_HIGH:NotificationManager.IMPORTANCE_LOW).setContentTitle(lost?"Tablet Escolar · MODO PÉRDIDA":"Tablet Escolar · protección activa").setContentText(lost?Core.dn(this)+" · recuperación activa":who).setSmallIcon(lost?android.R.drawable.ic_lock_lock:android.R.drawable.presence_online).setOngoing(true).setOnlyAlertOnce(true);if(Core.guest(this)&&!Core.user(this).isEmpty()){Intent lo=new Intent(this,AgentService.class).setAction(LOGOUT);PendingIntent lp=PendingIntent.getService(this,202,lo,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);b.addAction(new Notification.Action.Builder(null,"Cerrar sesión",lp).build());}return b.build();}
-    Notification.Builder builder(String ch,int imp){NotificationManager nm=(NotificationManager)getSystemService(NOTIFICATION_SERVICE);if(Build.VERSION.SDK_INT>=26&&nm.getNotificationChannel(ch)==null)nm.createNotificationChannel(new NotificationChannel(ch,"Tablet Escolar",imp));return Build.VERSION.SDK_INT>=26?new Notification.Builder(this,ch):new Notification.Builder(this);}
+    Notification note(){boolean lost=RecoveryPrefs.lost(this);String who=Core.user(this).isEmpty()?Core.dn(this):Core.user(this)+" · "+Core.roleLabel(this);Notification.Builder b=builder("agent",lost?NotificationManager.IMPORTANCE_HIGH:NotificationManager.IMPORTANCE_LOW).setContentTitle(lost?"Aula Móvil · MODO PÉRDIDA":"Aula Móvil · protección activa").setContentText(lost?Core.dn(this)+" · recuperación activa":who).setSmallIcon(lost?android.R.drawable.ic_lock_lock:android.R.drawable.presence_online).setOngoing(true).setOnlyAlertOnce(true);if(Core.guest(this)&&!Core.user(this).isEmpty()){Intent lo=new Intent(this,AgentService.class).setAction(LOGOUT);PendingIntent lp=PendingIntent.getService(this,202,lo,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);b.addAction(new Notification.Action.Builder(null,"Cerrar sesión",lp).build());}return b.build();}
+    Notification.Builder builder(String ch,int imp){NotificationManager nm=(NotificationManager)getSystemService(NOTIFICATION_SERVICE);if(Build.VERSION.SDK_INT>=26&&nm.getNotificationChannel(ch)==null)nm.createNotificationChannel(new NotificationChannel(ch,"Aula Móvil",imp));return Build.VERSION.SDK_INT>=26?new Notification.Builder(this,ch):new Notification.Builder(this);}
 }
