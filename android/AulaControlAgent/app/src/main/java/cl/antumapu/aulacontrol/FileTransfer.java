@@ -24,7 +24,7 @@ final class FileTransfer {
         try{
             JSONObject j=new JSONObject(payload==null?"{}":payload);
             String url=j.optString("url",""),sha=j.optString("sha256","").toLowerCase(),name=safe(j.optString("name","archivo"));
-            if(!url.startsWith("https://")||sha.length()!=64||name.isEmpty())return;
+            if(!(url.startsWith("https://")||url.startsWith("http://"))||sha.length()!=64||name.isEmpty())return;
             tmp=new File(c.getCacheDir(),"file-"+System.currentTimeMillis());
             HttpURLConnection h=(HttpURLConnection)new URL(url).openConnection();h.setConnectTimeout(12000);h.setReadTimeout(45000);h.setInstanceFollowRedirects(true);
             MessageDigest md=MessageDigest.getInstance("SHA-256");
