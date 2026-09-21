@@ -250,8 +250,8 @@ public class MainActivity extends Activity {
     void adminPanel(){
         ScrollView sc=shell();LinearLayout r=root();sc.addView(r);hero(r,"MANTENIMIENTO ACTIVO","Administración del dispositivo","Las restricciones institucionales están relajadas temporalmente hasta cerrar este panel.",VIOLET);
         LinearLayout diag=card();diag.addView(chip(Compatibility.sessionsSupported(this)?"COMPATIBILIDAD COMPLETA":"COMPATIBILIDAD PARCIAL",Compatibility.sessionsSupported(this)?TEAL:CORAL,Compatibility.sessionsSupported(this)?Color.rgb(229,250,245):Color.rgb(255,239,241)));diag.addView(info("MODELO",Compatibility.summary(this),VIOLET));diag.addView(text("Usuarios administrados: "+yes(Compatibility.managedUsers(this))+" · Sesión efímera nativa: "+yes(Compatibility.ephemeralNative()),13,false,MUTED));r.addView(diag);
-        Button settings=secondary("Ajustes completos de Android"),usage=secondary("Acceso de uso / inactividad"),play=secondary("Abrir Google Play"),apps=secondary("Administrar aplicaciones"),clean=secondary("Limpiar sesiones temporales residuales"),cfg=secondary("Configuración de Aula Móvil"),release=danger("Liberar Device Owner"),done=primary("Cerrar administración y restaurar protección");r.addView(settings);r.addView(usage);r.addView(play);r.addView(apps);r.addView(clean);r.addView(cfg);r.addView(release);r.addView(done);
-        settings.setOnClickListener(v->openSettings());usage.setOnClickListener(v->{try{startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS));}catch(Exception ignored){}});play.setOnClickListener(v->askPlayStore());apps.setOnClickListener(v->{try{startActivity(new Intent(Settings.ACTION_APPLICATION_SETTINGS));}catch(Exception ignored){}});clean.setOnClickListener(v->new Thread(()->SessionUsers.cleanupSecondaryUsers(this),"AulaMovilCleanup").start());cfg.setOnClickListener(v->configUi());release.setOnClickListener(v->confirmRelease());done.setOnClickListener(v->closeAdmin());setAnimated(sc);
+        Button settings=secondary("Ajustes completos de Android"),usage=secondary("Acceso de uso / inactividad"),play=secondary("Abrir Google Play"),apps=secondary("Administrar aplicaciones"),clean=secondary("Limpiar sesiones temporales residuales"),cfg=secondary("Configuración de Aula Móvil"),reset=danger("Restablecer tablet de fábrica"),release=danger("Liberar Device Owner"),done=primary("Cerrar administración y restaurar protección");r.addView(settings);r.addView(usage);r.addView(play);r.addView(apps);r.addView(clean);r.addView(cfg);r.addView(reset);r.addView(release);r.addView(done);
+        settings.setOnClickListener(v->openSettings());usage.setOnClickListener(v->{try{startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS));}catch(Exception ignored){}});play.setOnClickListener(v->askPlayStore());apps.setOnClickListener(v->{try{startActivity(new Intent(Settings.ACTION_APPLICATION_SETTINGS));}catch(Exception ignored){}});clean.setOnClickListener(v->new Thread(()->SessionUsers.cleanupSecondaryUsers(this),"AulaMovilCleanup").start());cfg.setOnClickListener(v->configUi());reset.setOnClickListener(v->confirmFactoryReset());release.setOnClickListener(v->confirmRelease());done.setOnClickListener(v->closeAdmin());setAnimated(sc);
     }
 
     void askPlayStore(){
@@ -263,6 +263,18 @@ public class MainActivity extends Activity {
 
     void configUi(){
         ScrollView sc=shell();LinearLayout r=root();sc.addView(r);hero(r,"CONFIGURACIÓN","Identidad técnica","Modifica el nombre del equipo o establece una nueva contraseña administrativa.",COBALT);LinearLayout c=card();EditText dn=input("Nombre del dispositivo",false);dn.setText(Core.dn(this));EditText key=input("Clave técnica",false);key.setText(Core.key(this));EditText pw=input("Nueva contraseña administrativa · opcional",true);c.addView(dn);c.addView(key);c.addView(pw);r.addView(c);Button save=primary("Guardar cambios"),back=secondary("Volver");r.addView(save);r.addView(back);save.setOnClickListener(v->{if(dn.getText().toString().trim().length()<2||key.getText().toString().trim().length()<10){toast("Revisa los campos");return;}Core.config(this,dn.getText().toString(),key.getText().toString(),pw.getText().toString());toast("Configuración guardada");adminPanel();});back.setOnClickListener(v->adminPanel());setAnimated(sc);
+    }
+
+    void confirmFactoryReset(){
+        if(!Managed.owner(this)||!Core.adminMode(this))return;
+        LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(dp(18),dp(6),dp(18),0);
+        EditText pw=input("Contraseña administrativa",true),phrase=input("Escribe: BORRAR TABLET",false);box.addView(pw);box.addView(phrase);
+        new AlertDialog.Builder(this).setTitle("Restablecer tablet de fábrica").setMessage("Esta acción elimina usuarios, cuentas, archivos y la administración de la tablet. No se puede deshacer.").setView(box).setNegativeButton("Cancelar",null).setPositiveButton("BORRAR",(d,w)->{
+            if(!Core.checkPw(this,pw.getText().toString())){toast("Clave incorrecta");return;}
+            if(!"BORRAR TABLET".equals(phrase.getText().toString().trim())){toast("Confirmación incorrecta");return;}
+            RemoteRelay.eventAsync(this,"factory_reset",new org.json.JSONObject());
+            if(!Managed.factoryReset(this))toast("Android no permitió el restablecimiento");
+        }).show();
     }
 
     void closeAdmin(){PlayStoreGuard.unlock(this);Core.adminMode(this,false);Managed.restoreProtection(this);SessionState.ownerGate(this);Managed.enterGate(this);roleGate();}
