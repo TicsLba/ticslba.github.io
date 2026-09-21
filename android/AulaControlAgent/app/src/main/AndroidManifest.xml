@@ -42,12 +42,10 @@
   </activity>
 
   <!--
-   Owner-only institutional access guard.
-   Android treats this tiny activity as HOME only in the Device Owner user so
-   the OEM desktop cannot become usable before identification after a reboot.
-   It is not an application launcher: it has no app list and immediately opens
-   Tablet Escolar. The component is disabled in student/teacher temporary users,
-   which always keep the manufacturer's normal Android launcher.
+   Institutional access guard.
+   This tiny activity is the managed HOME while access is gated. In temporary
+   student/teacher users it remains HOME until visible supervision is active,
+   preventing the OEM launcher from appearing during user handoff.
   -->
   <activity
    android:name=".HomeGateActivity"
