@@ -98,7 +98,7 @@ public sealed class RemoteClient : IDisposable
     }
 
     static string S(JsonElement e,string n,string d="")=>e.TryGetProperty(n,out var x)&&x.ValueKind==JsonValueKind.String?x.GetString()??d:d;
-    static bool B(JsonElement e,string n)=>e.TryGetProperty(n,out var x)&&x.ValueKind is JsonValueKind.True or JsonValueKind.False&&x.GetBoolean();
+    static bool B(JsonElement e,string n)=>e.TryGetProperty(n,out var x)&&(x.ValueKind==JsonValueKind.True||x.ValueKind==JsonValueKind.False)&&x.GetBoolean();
     static int I(JsonElement e,string n,int d=0)=>e.TryGetProperty(n,out var x)&&x.TryGetInt32(out var v)?v:d;
     static long L(JsonElement e,string n,long d=0)=>e.TryGetProperty(n,out var x)&&x.TryGetInt64(out var v)?v:d;
     static double D(JsonElement e,string n,double d=0)=>e.TryGetProperty(n,out var x)&&x.TryGetDouble(out var v)?v:d;
