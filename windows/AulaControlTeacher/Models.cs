@@ -23,7 +23,7 @@ public class Settings{
 public class Registry{readonly string file;public Registry(string key){var d=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"AulaControl");Directory.CreateDirectory(d);file=Path.Combine(d,"devices-"+AcCrypto.Sha(key)[..12]+".json");}public List<Device> Load(){try{var list=System.IO.File.Exists(file)?JsonSerializer.Deserialize<List<Device>>(System.IO.File.ReadAllText(file))??new():new();foreach(var x in list){x.User="";x.Course="";x.Role="";}return list;}catch{return new();}}public void Save(IEnumerable<Device> d){try{var safe=d.Select(x=>new Device{Id=x.Id,DeviceName=x.DeviceName,Model=x.Model,Ip=x.Ip,Android=x.Android,CommandPort=x.CommandPort,ScreenPort=x.ScreenPort,Battery=x.Battery,Managed=x.Managed,Seen=x.Seen,FrameAgeMs=-1,Screen=false,User="",Course="",Role=""}).ToList();System.IO.File.WriteAllText(file,JsonSerializer.Serialize(safe));}catch{}}}
 public static class SessionLog{
  static readonly object Gate=new();
- static string File{get{var d=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"TabletEscolar");Directory.CreateDirectory(d);return Path.Combine(d,"session-accountability.csv");}}
+ static string File{get{var d=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"AulaMovil");Directory.CreateDirectory(d);return Path.Combine(d,"session-accountability.csv");}}
  public static void Change(string id,string oldU,string newU,string course){lock(Gate){
   Ensure();
   string ev=string.IsNullOrWhiteSpace(newU)?"LOGOUT":string.IsNullOrWhiteSpace(oldU)?"LOGIN":"CHANGE";
