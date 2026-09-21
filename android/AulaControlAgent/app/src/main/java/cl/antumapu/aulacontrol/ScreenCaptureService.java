@@ -41,16 +41,18 @@ public class ScreenCaptureService extends Service {
         mp.registerCallback(new MediaProjection.Callback(){@Override public void onStop(){active=false;lastFrameAt=0;failClosed();stopSelf();}},new Handler(Looper.getMainLooper()));
         DisplayMetrics dm=getResources().getDisplayMetrics();int target=dm.widthPixels>=1200?720:640;int w=Math.min(target,dm.widthPixels),h=Math.max(1,(int)(dm.heightPixels*(w/(double)dm.widthPixels)));
         ir=ImageReader.newInstance(w,h,PixelFormat.RGBA_8888,2);
-        ir.setOnImageAvailableListener(r->{Image im=null;try{im=r.acquireLatestImage();if(im==null)return;long n=System.currentTimeMillis();if(n-last<Core.frameIntervalMs(this))return;last=n;Image.Plane p=im.getPlanes()[0];ByteBuffer b=p.getBuffer();int ps=p.getPixelStride(),rs=p.getRowStride(),pad=Math.max(0,rs-ps*w);Bitmap wide=Bitmap.createBitmap(w+pad/ps,h,Bitmap.Config.ARGB_8888);wide.copyPixelsFromBuffer(b);Bitmap crop=Bitmap.createBitmap(wide,0,0,w,h);long sig=signature(crop);if(sig!=visualSig){visualSig=sig;lastVisualChangeAt=n;}ByteArrayOutputStream out=new ByteArrayOutputStream(128*1024);crop.compress(Bitmap.CompressFormat.JPEG,56,out);frame.set(out.toByteArray());lastFrameAt=n;wide.recycle();crop.recycle();}catch(Exception ignored){}finally{if(im!=null)im.close();}},captureHandler);
+        ir.setOnImageAvailableListener(r->{Image im=null;try{im=r.acquireLatestImage();if(im==null)return;long n=System.currentTimeMillis();if(n-last<Core.frameIntervalMs(this))return;last=n;Image.Plane p=im.getPlanes()[0];ByteBuffer b=p.getBuffer();int ps=p.getPixelStride(),rs=p.getRowStride(),pad=Math.max(0,rs-ps*w);Bitmap wide=Bitmap.createBitmap(w+pad/ps,h,Bitmap.Config.ARGB_8888);wide.copyPixelsFromBuffer(b);Bitmap crop=Bitmap.createBitmap(wide,0,0,w,h);long sig=signature(crop);if(sig!=visualSig){visualSig=sig;lastVisualChangeAt=n;}ByteArrayOutputStream out=new ByteArrayOutputStream(128*1024);crop.compress(Bitmap.CompressFormat.JPEG,60,out);byte[] jpg=out.toByteArray();frame.set(jpg);lastFrameAt=n;if(Core.remoteScreenRequested(this))RemoteRelay.uploadScreenAsync(this,jpg,n);wide.recycle();crop.recycle();}catch(Exception ignored){}finally{if(im!=null)im.close();}},captureHandler);
         vd=mp.createVirtualDisplay("AulaMovil",w,h,dm.densityDpi,DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,ir.getSurface(),null,captureHandler);new Thread(this::server,"AulaMovilScreen").start();
     }
 
     long signature(Bitmap b){long s=1125899906842597L;int gx=6,gy=6;for(int y=0;y<gy;y++){int py=Math.min(b.getHeight()-1,(y*b.getHeight())/gy);for(int x=0;x<gx;x++){int px=Math.min(b.getWidth()-1,(x*b.getWidth())/gx);s=31*s+b.getPixel(px,py);}}return s;}
 
     void failClosed(){
-        if(!Core.guest(this)||!Core.supervisionStarted(this)||Core.user(this).isEmpty())return;
-        Core.supervisionStarted(this,false);SessionState.guestSetup(this);
-        try{startActivity(new Intent(this,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP));}catch(Exception ignored){}
+        // Una interrupción de MediaProjection nunca destruye ni bloquea una
+        // sesión ya activa. La consola la marcará "sin supervisión" y podrá
+        // volver a solicitar el consentimiento oficial de Android.
+        if(!Core.guest(this)||Core.user(this).isEmpty())return;
+        Core.supervisionStarted(this,false);
     }
 
     void server(){try{screenSocket=new ServerSocket(PORT);screenSocket.setReuseAddress(true);while(run)try(Socket c=screenSocket.accept()){c.setSoTimeout(3000);serve(c);}catch(Exception ignored){}}catch(Exception ignored){}finally{screenSocket=null;}}
