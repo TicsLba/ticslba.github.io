@@ -188,6 +188,7 @@ public class MainWindow : Window
         bar.Children.Add(Action("Inactividad",async(_,_)=>await SetIdleSelected(),SoftBlue,Navy));
         bar.Children.Add(Action("Volumen",async(_,_)=>await SetVolumeSelected(),SoftBlue,Navy));
         bar.Children.Add(Action("Instalar APK",async(_,_)=>await InstallApkSelected(),SoftGold,Navy));
+        bar.Children.Add(Action("Enviar archivo",async(_,_)=>await SendFileSelected(),SoftBlue,Navy));
         bar.Children.Add(Action("Desinstalar app",async(_,_)=>await PromptSend("UNINSTALL_PACKAGE","Desinstalar aplicación")));
         bar.Children.Add(Action("Bloquear",async(_,_)=>await SendSelected("LOCK_NOW"),Navy));
         bar.Children.Add(Action("Reiniciar",async(_,_)=>await SendSelected("REBOOT"),Red));
@@ -477,6 +478,25 @@ public class MainWindow : Window
         }
         if(lanServer!=null)_=Task.Run(async()=>{await Task.Delay(TimeSpan.FromMinutes(3));lanServer.Dispose();});
         MessageBox.Show($"Instalación enviada a {sent} tablet(s).\n\nSHA-256: {sha}\nLa instalación sólo se ejecuta en el usuario Device Owner.","Aula Móvil");
+    }
+
+    async Task SendFileSelected()
+    {
+        var s=Selected();if(s.Count==0){MessageBox.Show("Selecciona al menos una tablet.","Aula Móvil");return;}
+        var dlg=new OpenFileDialog{Filter="Todos los archivos (*.*)|*.*",Title="Enviar archivo institucional"};if(dlg.ShowDialog(this)!=true)return;
+        string sha=Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(dlg.FileName))).ToLowerInvariant();string name=Path.GetFileName(dlg.FileName);int sent=0;ApkPushServer? lanServer=null;
+        var local=s.Where(IsLocal).ToList();var away=s.Where(x=>!IsLocal(x)).ToList();
+        if(local.Count>0){
+            lanServer=new ApkPushServer(dlg.FileName);
+            foreach(var d in local){string host=ApkPushServer.LocalAddressFor(d.Ip);string payload=JsonSerializer.Serialize(new{url=$"http://{host}:{lanServer.Port}/file",sha256=sha,name});var rr=await commands!.Send(d,"DOWNLOAD_FILE",payload);if(rr.Item1)sent++;}
+        }
+        if(away.Count>0&&remote!=null&&remote.Enabled){
+            var upload=await remote.UploadFileAsync(dlg.FileName);
+            if(upload.Item1)foreach(var d in away){string payload=JsonSerializer.Serialize(new{url=upload.Item3,sha256=upload.Item2,name});var rr=await remote.SendCommandAsync(d.Id,"DOWNLOAD_FILE",payload);if(rr.Item1)sent++;}
+            else footer.Text="No se pudo subir archivo al Relay: "+upload.Item2;
+        }else if(away.Count>0)footer.Text=$"{away.Count} tablet(s) remotas requieren Relay HTTPS.";
+        if(lanServer!=null)_=Task.Run(async()=>{await Task.Delay(TimeSpan.FromMinutes(3));lanServer.Dispose();});
+        MessageBox.Show($"Archivo enviado a {sent} tablet(s). Se guardará en Descargas/AulaMovil dentro de la sesión.","Aula Móvil");
     }
 
     async Task SetFps()
