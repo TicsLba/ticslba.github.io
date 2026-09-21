@@ -6,7 +6,7 @@ namespace AulaControlTeacher;
 public sealed class RelaySettings
 {
     public string Url { get; set; } = "";
-    static string Dir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"TabletEscolar");
+    static string Dir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"AulaMovil");
     static string File => Path.Combine(Dir,"relay.json");
 
     public static RelaySettings Load(){try{return System.IO.File.Exists(File)?JsonSerializer.Deserialize<RelaySettings>(System.IO.File.ReadAllText(File))??new():new();}catch{return new();}}
