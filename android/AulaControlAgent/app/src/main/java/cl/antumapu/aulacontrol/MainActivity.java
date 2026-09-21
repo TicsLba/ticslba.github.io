@@ -23,6 +23,8 @@ public class MainActivity extends Activity {
     final Handler ui=new Handler(Looper.getMainLooper());
     long captureAt;
     boolean awaitingCapture;
+    boolean recaptureMode;
+    boolean pendingRemoteCapture;
     boolean playAccessSession;
 
     @Override public void onCreate(Bundle b){
@@ -30,6 +32,7 @@ public class MainActivity extends Activity {
         getWindow().setStatusBarColor(NAVY);getWindow().setNavigationBarColor(NAVY);
         if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)
             requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},9);
+        pendingRemoteCapture=getIntent()!=null&&getIntent().getBooleanExtra("request_supervision",false);
         route();
     }
 
@@ -37,7 +40,7 @@ public class MainActivity extends Activity {
         super.onResume();
         if(!awaitingCapture&&Core.ready(this))route();
     }
-    @Override protected void onNewIntent(Intent i){super.onNewIntent(i);setIntent(i);route();}
+    @Override protected void onNewIntent(Intent i){super.onNewIntent(i);setIntent(i);pendingRemoteCapture=i!=null&&i.getBooleanExtra("request_supervision",false);route();}
     @Override public void onUserInteraction(){super.onUserInteraction();if(Core.guest(this)&&SessionState.isActive(this))Core.touch(this);}
     @Override public void onBackPressed(){
         if(Managed.owner(this)&&Core.adminMode(this)){closeAdmin();return;}
@@ -51,8 +54,14 @@ public class MainActivity extends Activity {
             agent();
             SessionState.State s=SessionState.get(this);
             if(s==SessionState.State.ACTIVE){
-                if(!ScreenCaptureService.active){SessionState.guestSetup(this);Core.supervisionStarted(this,false);Managed.homeGuardOn(this);Managed.enterGate(this);guestStartUi("La supervisión se interrumpió. Autorízala nuevamente para continuar.");}
-                else{Managed.homeGuardOff(this);Managed.exitGate(this);sessionUi();}
+                // Una sesión válida nunca vuelve al selector porque el proceso de
+                // Aula Móvil se reinicie o MediaProjection se interrumpa.
+                if(!ScreenCaptureService.active)Core.supervisionStarted(this,false);
+                Managed.homeGuardOff(this);Managed.exitGate(this);sessionUi();
+                if(pendingRemoteCapture&&!ScreenCaptureService.active){
+                    pendingRemoteCapture=false;
+                    ui.postDelayed(this::capture,300);
+                }else pendingRemoteCapture=false;
                 return;
             }
             if(s==SessionState.State.CLOSING){Managed.homeGuardOn(this);Managed.enterGate(this);closingUi();return;}
@@ -88,7 +97,7 @@ public class MainActivity extends Activity {
         LinearLayout h=new LinearLayout(this);h.setOrientation(LinearLayout.VERTICAL);h.setPadding(dp(20),dp(19),dp(20),dp(20));h.setBackground(gradient(NAVY,accent,24));margins(h,0,0,0,12);
         LinearLayout brand=new LinearLayout(this);brand.setGravity(Gravity.CENTER_VERTICAL);
         ImageView logo=new ImageView(this);logo.setImageResource(R.drawable.lba_logo);logo.setScaleType(ImageView.ScaleType.CENTER_INSIDE);LinearLayout mark=new LinearLayout(this);mark.setGravity(Gravity.CENTER);mark.setBackground(shape(WHITE,17));mark.addView(logo,new LinearLayout.LayoutParams(dp(42),dp(42)));brand.addView(mark,new LinearLayout.LayoutParams(dp(52),dp(52)));
-        LinearLayout names=new LinearLayout(this);names.setOrientation(LinearLayout.VERTICAL);names.setPadding(dp(12),0,0,0);names.addView(text("Aula Móvil",22,true,WHITE));names.addView(text("10.1.1 · Gestión institucional",12,false,Color.rgb(221,230,255)));brand.addView(names);h.addView(brand);
+        LinearLayout names=new LinearLayout(this);names.setOrientation(LinearLayout.VERTICAL);names.setPadding(dp(12),0,0,0);names.addView(text("Aula Móvil",22,true,WHITE));names.addView(text("11.0 · Gestión institucional",12,false,Color.rgb(221,230,255)));brand.addView(names);h.addView(brand);
         TextView e=text(eyebrow,11,true,Color.rgb(221,235,255));e.setAllCaps(true);e.setLetterSpacing(.08f);e.setPadding(0,dp(17),0,dp(5));h.addView(e);
         h.addView(text(title,29,true,WHITE));TextView s=text(subtitle,14,false,Color.rgb(234,239,255));s.setPadding(0,dp(7),0,0);s.setLineSpacing(0,1.08f);h.addView(s);r.addView(h);
     }
@@ -122,8 +131,8 @@ public class MainActivity extends Activity {
         new Thread(()->SessionUsers.cleanupSecondaryUsers(this),"AulaMovilCleanup").start();
         ScrollView sc=shell();LinearLayout r=root();sc.addView(r);hero(r,"ACCESO PRIORITARIO","¿Quién utilizará esta tablet?","Este acceso se protege antes de habilitar Android. Identifícate para crear un espacio temporal separado.",COBALT);
         LinearLayout d=card();d.addView(chip("DISPOSITIVO GESTIONADO",NAVY,Color.rgb(232,237,255)));d.addView(info("EQUIPO",Core.dn(this),COBALT));d.addView(text(Core.id(this)+" · "+Compatibility.summary(this),12,false,MUTED));r.addView(d);
-        LinearLayout st=role("E","Estudiante","Nombre, apellido y curso · cierre por inactividad a los 10 min",COBALT),te=role("P","Profesor","Nombre y apellido · cierre por inactividad a los 30 min",TEAL);r.addView(st);r.addView(te);
-        TextView privacy=text("Supervisión en tiempo real, no vigilancia histórica. Sin keylogging, sin contraseñas personales y sin grabación histórica por defecto.",12,false,MUTED);privacy.setPadding(dp(3),dp(10),dp(3),dp(12));r.addView(privacy);
+        LinearLayout st=role("E","Estudiante","Nombre, apellido y curso · cierre por inactividad a los "+Core.idleMinutes(this,Core.ROLE_STUDENT)+" min",COBALT),te=role("P","Profesor","Nombre y apellido · cierre por inactividad a los "+Core.idleMinutes(this,Core.ROLE_TEACHER)+" min",TEAL);r.addView(st);r.addView(te);
+        TextView privacy=text("Supervisión en vivo, no grabación histórica. Aula Móvil jamás registra contraseñas ni el texto que escribes.",12,false,MUTED);privacy.setPadding(dp(3),dp(10),dp(3),dp(12));r.addView(privacy);
         Button admin=secondary("Administración del dispositivo");r.addView(admin);st.setOnClickListener(v->identityForm(Core.ROLE_STUDENT));te.setOnClickListener(v->identityForm(Core.ROLE_TEACHER));admin.setOnClickListener(v->askAdmin());setAnimated(sc);
     }
 
@@ -169,7 +178,9 @@ public class MainActivity extends Activity {
     }
 
     void capture(){
-        awaitingCapture=true;captureAt=System.currentTimeMillis();SessionState.set(this,SessionState.State.WAITING_CAPTURE);
+        recaptureMode=SessionState.isActive(this);
+        awaitingCapture=true;captureAt=System.currentTimeMillis();
+        if(!recaptureMode)SessionState.set(this,SessionState.State.WAITING_CAPTURE);
         MediaProjectionManager m=(MediaProjectionManager)getSystemService(MEDIA_PROJECTION_SERVICE);
         if(m==null){awaitingCapture=false;SessionState.guestSetup(this);guestStartUi("Este dispositivo no ofrece MediaProjection.");return;}
         try{startActivityForResult(m.createScreenCaptureIntent(),CAP);}catch(Exception e){awaitingCapture=false;SessionState.guestSetup(this);guestStartUi("Android no pudo abrir la autorización de supervisión.");}
@@ -179,7 +190,11 @@ public class MainActivity extends Activity {
         super.onActivityResult(rq,rc,data);awaitingCapture=false;if(rq!=CAP)return;
         if(rc==RESULT_OK&&data!=null){
             Intent s=new Intent(this,ScreenCaptureService.class);s.putExtra("rc",rc);s.putExtra("data",data);if(Build.VERSION.SDK_INT>=26)startForegroundService(s);else startService(s);waitingFrameUi();waitFrame();
-        }else{SessionState.guestSetup(this);guestStartUi("La supervisión no fue autorizada. La sesión permanece protegida.");}
+        }else{
+            Core.supervisionStarted(this,false);
+            if(recaptureMode){SessionState.active(this);sessionUi();}
+            else{SessionState.guestSetup(this);guestStartUi("La supervisión inicial no fue autorizada. La sesión permanece protegida.");}
+        }
     }
 
     void waitingFrameUi(){
@@ -188,8 +203,17 @@ public class MainActivity extends Activity {
 
     void waitFrame(){
         Runnable[] q=new Runnable[1];q[0]=()->{
-            if(ScreenCaptureService.active&&ScreenCaptureService.lastFrameAt>=captureAt){Core.supervisionStarted(this,true);Core.touch(this);SessionState.active(this);readyUi();return;}
-            if(System.currentTimeMillis()-captureAt>12000){stopService(new Intent(this,ScreenCaptureService.class));Core.supervisionStarted(this,false);SessionState.guestSetup(this);guestStartUi("Android no entregó un cuadro de pantalla válido. Inténtalo nuevamente.");return;}
+            if(ScreenCaptureService.active&&ScreenCaptureService.lastFrameAt>=captureAt){
+                Core.supervisionStarted(this,true);Core.touch(this);SessionState.active(this);
+                if(recaptureMode){sessionUi();ui.postDelayed(this::openHome,450);}else readyUi();
+                return;
+            }
+            if(System.currentTimeMillis()-captureAt>12000){
+                stopService(new Intent(this,ScreenCaptureService.class));Core.supervisionStarted(this,false);
+                if(recaptureMode){SessionState.active(this);sessionUi();}
+                else{SessionState.guestSetup(this);guestStartUi("Android no entregó un cuadro de pantalla válido. Inténtalo nuevamente.");}
+                return;
+            }
             ui.postDelayed(q[0],250);
         };ui.post(q[0]);
     }
@@ -199,18 +223,23 @@ public class MainActivity extends Activity {
     }
 
     void sessionUi(){
-        ScrollView sc=shell();LinearLayout r=root();sc.addView(r);hero(r,"SESIÓN ACTIVA","Aula Móvil está protegiendo esta sesión","Puedes volver a Android, abrir Ajustes o cerrar tu espacio temporal.",TEAL);LinearLayout c=card();c.addView(chip("SUPERVISIÓN ACTIVA",TEAL,Color.rgb(229,250,245)));c.addView(info("USUARIO",Core.user(this),TEAL));c.addView(info("ROL",Core.roleLabel(this)+(Core.course(this).isEmpty()?"":" · "+Core.course(this)),COBALT));c.addView(text("Desinstalaciones bloqueadas · cuentas permitidas · datos aislados por usuario Android",12,false,MUTED));r.addView(c);
-        Button home=primary("Volver a Android"),settings=secondary("Abrir Ajustes"),logout=danger("Cerrar sesión y eliminar datos temporales");r.addView(home);r.addView(settings);r.addView(logout);home.setOnClickListener(v->openHome());settings.setOnClickListener(v->openSettings());logout.setOnClickListener(v->confirmLogout());setAnimated(sc);
+        boolean live=ScreenCaptureService.active;
+        ScrollView sc=shell();LinearLayout r=root();sc.addView(r);hero(r,"SESIÓN ACTIVA","Aula Móvil está protegiendo esta sesión",live?"Supervisión en vivo disponible.":"La sesión continúa; la consola puede solicitar nuevamente supervisión.",live?TEAL:SUN);
+        LinearLayout c=card();c.addView(chip(live?"SUPERVISIÓN ACTIVA":"SIN SUPERVISIÓN",live?TEAL:SUN,live?Color.rgb(229,250,245):Color.rgb(255,247,230)));c.addView(info("USUARIO",Core.user(this),TEAL));c.addView(info("ROL",Core.roleLabel(this)+(Core.course(this).isEmpty()?"":" · "+Core.course(this)),COBALT));c.addView(text("Instalaciones bloqueadas · cuentas personales permitidas · datos aislados y temporales",12,false,MUTED));r.addView(c);
+        Button home=primary("Volver a Android"),settings=secondary("Abrir Ajustes");r.addView(home);r.addView(settings);
+        if(!live){Button screen=secondary("Autorizar supervisión");r.addView(screen);screen.setOnClickListener(v->capture());}
+        Button logout=danger("Cerrar sesión y eliminar datos temporales");r.addView(logout);
+        home.setOnClickListener(v->openHome());settings.setOnClickListener(v->openSettings());logout.setOnClickListener(v->confirmLogout());setAnimated(sc);
     }
 
     void openHome(){
-        if(Managed.profileOwner(this)&&(!SessionState.isActive(this)||!ScreenCaptureService.active)){SessionState.guestSetup(this);Managed.homeGuardOn(this);Managed.enterGate(this);guestStartUi("La sesión aún no está lista para abrir Android.");return;}
+        if(Managed.profileOwner(this)&&!SessionState.isActive(this)){SessionState.guestSetup(this);Managed.homeGuardOn(this);Managed.enterGate(this);guestStartUi("La sesión aún no está lista para abrir Android.");return;}
         if(Managed.profileOwner(this))Managed.homeGuardOff(this);
         Managed.exitGate(this);try{Intent h=new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);startActivity(h);moveTaskToBack(true);}catch(Exception e){toast("No se encontró el inicio de Android");}
     }
     void openSettings(){try{startActivity(new Intent(Settings.ACTION_SETTINGS));}catch(Exception e){toast("No se pudieron abrir Ajustes");}}
     void confirmLogout(){new AlertDialog.Builder(this).setTitle("Cerrar sesión").setMessage("Se eliminará el usuario Android temporal y con él las cuentas y datos locales de esta sesión.").setNegativeButton("Cancelar",null).setPositiveButton("Cerrar sesión",(d,w)->endGuest()).show();}
-    void endGuest(){SessionState.set(this,SessionState.State.CLOSING);Core.supervisionStarted(this,false);stopService(new Intent(this,ScreenCaptureService.class));Managed.homeGuardOn(this);Managed.enterGate(this);closingUi();ui.postDelayed(()->new Thread(()->SessionUsers.logoutGuest(this),"TabletEscolarLogout").start(),500);}
+    void endGuest(){SessionState.set(this,SessionState.State.CLOSING);Core.supervisionStarted(this,false);Core.remoteScreenUntil(this,0);stopService(new Intent(this,ScreenCaptureService.class));Managed.homeGuardOn(this);Managed.enterGate(this);closingUi();ui.postDelayed(()->new Thread(()->SessionUsers.logoutGuest(this),"TabletEscolarLogout").start(),500);}
     void closingUi(){ScrollView sc=shell();LinearLayout r=root();sc.addView(r);hero(r,"CERRANDO SESIÓN","Protegiendo tus datos","Android está eliminando el usuario temporal antes de volver al acceso institucional.",VIOLET);LinearLayout c=card();c.addView(step("✓","Supervisión finalizada",TEAL));c.addView(step("✓","Sesión bloqueada",TEAL));c.addView(step("●","Eliminando usuario temporal",COBALT));c.addView(step("○","Volviendo a acceso institucional",VIOLET));r.addView(c);setAnimated(sc);}
 
     void askAdmin(){
