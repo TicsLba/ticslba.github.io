@@ -5,16 +5,16 @@
     <UseWPF>true</UseWPF>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <AssemblyName>TabletEscolarTeacher</AssemblyName>
+    <AssemblyName>AulaMovilConsole</AssemblyName>
     <RootNamespace>AulaControlTeacher</RootNamespace>
-    <Version>2.1.0</Version>
-    <AssemblyVersion>2.1.0.0</AssemblyVersion>
-    <FileVersion>2.1.0.0</FileVersion>
-    <Product>Tablet Escolar</Product>
+    <Version>10.1.0</Version>
+    <AssemblyVersion>10.1.0.0</AssemblyVersion>
+    <FileVersion>10.1.0.0</FileVersion>
+    <Product>Aula Móvil</Product>
     <Company>Desarrollador Eduardo Pérez González</Company>
     <Authors>Eduardo Pérez González</Authors>
     <Copyright>© 2026 Eduardo Pérez González</Copyright>
-    <Description>Consola docente para gestión, supervisión en vivo, informes de uso y recuperación de tablets Android institucionales</Description>
+    <Description>Consola institucional Aula Móvil 10.1 para gestión, supervisión en vivo, informes, recuperación y despliegue de tablets Android</Description>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained>
