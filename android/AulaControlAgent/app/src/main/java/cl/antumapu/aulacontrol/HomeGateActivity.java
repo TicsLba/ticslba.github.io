@@ -16,11 +16,10 @@ import android.widget.TextView;
 /**
  * Synchronous owner-only institutional access guard.
  *
- * The Device Owner makes this the HOME target only for the owner user. This is
- * deliberately not an application launcher: it exposes no applications and
- * only holds the screen until Aula Móvil can present the identification
- * gate. Student/teacher users never enable this component and always use the
- * manufacturer's ordinary launcher once their session is ACTIVE.
+ * Aula Móvil makes this the HOME target while access is gated. In the owner
+ * user it protects identification and boot; in a temporary student/teacher
+ * user it remains HOME until visible supervision is active. Only then is HOME
+ * released to the manufacturer's normal launcher.
  */
 public class HomeGateActivity extends Activity {
     private final Handler ui=new Handler(Looper.getMainLooper());
@@ -32,6 +31,13 @@ public class HomeGateActivity extends Activity {
         getWindow().setNavigationBarColor(Color.rgb(18,35,67));
         render();
 
+        if(Managed.profileOwner(this)){
+            Managed.applyGuest(this);
+            Managed.homeGuardOn(this);
+            Managed.enterGate(this);
+            forwardToGate();
+            return;
+        }
         if(!Managed.owner(this)){
             Managed.homeGuardOff(this);
             finish();
@@ -48,6 +54,13 @@ public class HomeGateActivity extends Activity {
         super.onNewIntent(intent);
         setIntent(intent);
         forwarded=false;
+        if(Managed.profileOwner(this)){
+            Managed.applyGuest(this);
+            Managed.homeGuardOn(this);
+            Managed.enterGate(this);
+            forwardToGate();
+            return;
+        }
         if(!Managed.owner(this)){
             Managed.homeGuardOff(this);
             finish();
@@ -60,7 +73,15 @@ public class HomeGateActivity extends Activity {
 
     @Override protected void onResume(){
         super.onResume();
-        if(!forwarded&&Managed.owner(this)){
+        if(forwarded)return;
+        if(Managed.profileOwner(this)){
+            Managed.applyGuest(this);
+            Managed.homeGuardOn(this);
+            Managed.enterGate(this);
+            forwardToGate();
+            return;
+        }
+        if(Managed.owner(this)){
             Managed.applyBootOwner(this);
             Managed.enterGate(this);
             waitUntilUnlocked();
