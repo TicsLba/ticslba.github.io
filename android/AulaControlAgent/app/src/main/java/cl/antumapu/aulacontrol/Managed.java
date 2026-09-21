@@ -186,6 +186,16 @@ final class Managed {
     }
 
     static void restoreProtection(Context c){Core.adminMode(c,false);applyOwner(c);}
+    static boolean factoryReset(Context c){
+        if(!owner(c)||!Core.adminMode(c))return false;
+        try{
+            DevicePolicyManager d=dpm(c);ComponentName a=admin(c);
+            restriction(d,a,UserManager.DISALLOW_FACTORY_RESET,false);
+            if(Build.VERSION.SDK_INT>=28)d.wipeData(DevicePolicyManager.WIPE_RESET_PROTECTION_DATA);
+            else d.wipeData(0);
+            return true;
+        }catch(Exception e){return false;}
+    }
     static void lockNow(Context c){try{if(managed(c))dpm(c).lockNow();}catch(Exception ignored){}
     }
     static void enter(Activity a){enterGate(a);}
