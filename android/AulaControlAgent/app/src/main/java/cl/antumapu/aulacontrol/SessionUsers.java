@@ -36,9 +36,15 @@ final class SessionUsers {
             UserHandle u=d.createAndManageUser(Managed.admin(c),label,Managed.admin(c),ex,flags);
             if(u==null)return false;
 
-            // Let Android finish profile-owner provisioning before the visible user switch.
-            // This reduces OEM races where the stock launcher appears before our gate Activity.
-            try{Thread.sleep(650);}catch(InterruptedException ignored){Thread.currentThread().interrupt();}
+            // Start the managed user out of view first. This gives Android time to
+            // finish profile-owner provisioning and lets AdminReceiver install the
+            // temporary HOME gate before the user ever becomes visible.
+            if(Build.VERSION.SDK_INT>=28){
+                try{d.startUserInBackground(Managed.admin(c),u);}catch(Exception ignored){}
+                try{Thread.sleep(1200);}catch(InterruptedException ignored){Thread.currentThread().interrupt();}
+            }else{
+                try{Thread.sleep(700);}catch(InterruptedException ignored){Thread.currentThread().interrupt();}
+            }
             SessionState.ownerGate(c);
             return d.switchUser(Managed.admin(c),u);
         }catch(Exception e){return false;}
