@@ -1,11 +1,12 @@
-name: Aula Movil 10.1
+name: Aula Movil 11
 
 on:
   push:
-    branches: [aulamovil-10-1]
+    branches: [aulamovil-11-final]
     paths:
       - 'android/AulaControlAgent/**'
       - 'windows/AulaControlTeacher/**'
+      - 'server/AulaMovilRelay/**'
       - '.github/workflows/aulamovil-10-1.yml'
   workflow_dispatch:
 
@@ -24,21 +25,23 @@ jobs:
       - name: Prepare institutional logo
         run: |
           mkdir -p android/AulaControlAgent/app/src/main/res/drawable-nodpi
-          curl -L --fail --retry 3             "https://dn721602.ca.archive.org/0/items/logos_20211117/color%20transparente.png"             -o android/AulaControlAgent/app/src/main/res/drawable-nodpi/lba_logo.png
+          curl -L --fail --retry 3 "https://dn721602.ca.archive.org/0/items/logos_20211117/color%20transparente.png" -o android/AulaControlAgent/app/src/main/res/drawable-nodpi/lba_logo.png
       - name: Build Android
         working-directory: android/AulaControlAgent
         run: gradle --no-daemon :app:assembleRelease
-      - name: Validate 10.1 contract
+      - name: Validate Aula Móvil 11 contract
         run: |
-          grep -q "versionName '10.1.0'" android/AulaControlAgent/app/build.gradle
+          grep -q "versionName '11.0.0-rc1'" android/AulaControlAgent/app/build.gradle
           grep -q 'MAKE_USER_EPHEMERAL' android/AulaControlAgent/app/src/main/java/cl/antumapu/aulacontrol/SessionUsers.java
-          grep -q 'setApplicationHidden(a,PACKAGE,false)' android/AulaControlAgent/app/src/main/java/cl/antumapu/aulacontrol/PlayStoreGuard.java
-          grep -q 'DISALLOW_INSTALL_APPS,Core.ROLE_STUDENT' android/AulaControlAgent/app/src/main/java/cl/antumapu/aulacontrol/Managed.java
-          grep -q 'Cerrar sesión y eliminar datos temporales' android/AulaControlAgent/app/src/main/java/cl/antumapu/aulacontrol/MainActivity.java
-          grep -q 'SET_FPS' android/AulaControlAgent/app/src/main/java/cl/antumapu/aulacontrol/AgentService.java
+          grep -q 'DISALLOW_INSTALL_APPS,true' android/AulaControlAgent/app/src/main/java/cl/antumapu/aulacontrol/Managed.java
+          grep -q 'PlayStoreGuard.lock(c)' android/AulaControlAgent/app/src/main/java/cl/antumapu/aulacontrol/Managed.java
+          grep -q 'REQUEST_SCREEN' android/AulaControlAgent/app/src/main/java/cl/antumapu/aulacontrol/AgentService.java
+          grep -q 'REMOTE_SCREEN_ON' android/AulaControlAgent/app/src/main/java/cl/antumapu/aulacontrol/AgentService.java
+          grep -q 'Core.supervisionStarted(this,false);' android/AulaControlAgent/app/src/main/java/cl/antumapu/aulacontrol/ScreenCaptureService.java
+          grep -q 'AppPolicy.applyGuest' android/AulaControlAgent/app/src/main/java/cl/antumapu/aulacontrol/AdminReceiver.java
       - uses: actions/upload-artifact@v4
         with:
-          name: AulaMovil-10.1-Android-unsigned
+          name: AulaMovil-11-Android-unsigned
           path: android/AulaControlAgent/app/build/outputs/apk/release/app-release-unsigned.apk
           if-no-files-found: error
 
@@ -54,6 +57,21 @@ jobs:
         run: dotnet publish windows/AulaControlTeacher/AulaControlTeacher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
       - uses: actions/upload-artifact@v4
         with:
-          name: AulaMovil-10.1-Windows-x64
+          name: AulaMovil-11-Windows-x64
           path: windows/AulaControlTeacher/bin/Release/net10.0-windows/win-x64/publish/
+          if-no-files-found: error
+
+  relay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Publish Relay Linux x64
+        run: dotnet publish server/AulaMovilRelay/AulaMovilRelay.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -o server-publish
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AulaMovil-11-Relay-linux-x64
+          path: server-publish/
           if-no-files-found: error
