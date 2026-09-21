@@ -18,7 +18,7 @@ import android.widget.TextView;
  *
  * The Device Owner makes this the HOME target only for the owner user. This is
  * deliberately not an application launcher: it exposes no applications and
- * only holds the screen until Tablet Escolar can present the identification
+ * only holds the screen until Aula Móvil can present the identification
  * gate. Student/teacher users never enable this component and always use the
  * manufacturer's ordinary launcher once their session is ACTIVE.
  */
@@ -97,7 +97,7 @@ public class HomeGateActivity extends Activity {
         // A reboot invalidates any old shared session. Remove secondary users
         // outside the UI thread while the owner gate stays visible.
         new Thread(()->SessionUsers.cleanupSecondaryUsers(this),
-                "TabletEscolarBootCleanup").start();
+                "AulaMovilBootCleanup").start();
 
         startAgent();
         forwardToGate();
@@ -140,11 +140,11 @@ public class HomeGateActivity extends Activity {
         tile.setColor(Color.WHITE);tile.setCornerRadius(dp(25));
         mark.setBackground(tile);
         ImageView logo=new ImageView(this);
-        logo.setImageResource(R.drawable.ic_tablet_school_mark);
+        logo.setImageResource(R.drawable.lba_logo);
         mark.addView(logo,new LinearLayout.LayoutParams(dp(72),dp(72)));
         root.addView(mark,new LinearLayout.LayoutParams(dp(98),dp(98)));
 
-        TextView title=text("Tablet Escolar",30,true,Color.WHITE);
+        TextView title=text("Aula Móvil",30,true,Color.WHITE);
         LinearLayout.LayoutParams tp=new LinearLayout.LayoutParams(-2,-2);tp.topMargin=dp(22);
         root.addView(title,tp);
 
@@ -158,7 +158,7 @@ public class HomeGateActivity extends Activity {
         sp.topMargin=dp(17);sp.leftMargin=dp(16);sp.rightMargin=dp(16);
         root.addView(sub,sp);
 
-        TextView boot=text("Arranque protegido · Tablet Escolar 4.0",11,true,Color.rgb(173,197,244));
+        TextView boot=text("Arranque protegido · Aula Móvil 10.1",11,true,Color.rgb(173,197,244));
         LinearLayout.LayoutParams bp=new LinearLayout.LayoutParams(-2,-2);bp.topMargin=dp(19);
         root.addView(boot,bp);
 
