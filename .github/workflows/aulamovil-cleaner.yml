@@ -1,7 +1,7 @@
-name: AulaMovil Cleaner build
+name: AulaMovil Cleaner 9 to 10.1
 on:
   push:
-    branches: [ "aulamovil-cleaner-v7-release" ]
+    branches: [ "aulamovil-cleaner-9-to-10" ]
     paths:
       - 'AulaMovilCleaner/**'
       - '.github/workflows/aulamovil-cleaner.yml'
