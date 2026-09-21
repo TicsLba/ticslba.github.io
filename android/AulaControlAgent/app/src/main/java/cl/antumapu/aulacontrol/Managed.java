@@ -69,7 +69,8 @@ final class Managed {
      */
     static void applyBootOwner(Context c){
         if(!owner(c))return;
-        // Aula Móvil 10.1: the institutional owner/admin must always retain Google Play.
+        // El usuario Propietario conserva Google Play. En operación normal
+        // la ubicación permanece activa y los ajustes críticos quedan protegidos.
         PlayStoreGuard.unlock(c);
         homeGuardOn(c);
         try{
@@ -83,6 +84,11 @@ final class Managed {
             restriction(d,a,UserManager.DISALLOW_SAFE_BOOT,true);
             restriction(d,a,UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES,true);
             restriction(d,a,UserManager.DISALLOW_DEBUGGING_FEATURES,true);
+            restriction(d,a,UserManager.DISALLOW_CONFIG_LOCATION,true);
+            restriction(d,a,UserManager.DISALLOW_CONFIG_VPN,true);
+            restriction(d,a,UserManager.DISALLOW_USB_FILE_TRANSFER,true);
+            restriction(d,a,UserManager.DISALLOW_MOUNT_PHYSICAL_MEDIA,true);
+            if(Build.VERSION.SDK_INT>=28)try{d.setLocationEnabled(a,true);}catch(Exception ignored){}
         }catch(Exception ignored){}
     }
 
@@ -104,32 +110,37 @@ final class Managed {
 
     static void applyGuest(Context c){
         if(!profileOwner(c))return;
-        // Role-specific Google Play policy. It is never hidden.
-        // Student: suspended only inside this ephemeral user.
-        // Teacher: visible and usable.
-        if(Core.ROLE_STUDENT.equals(Core.role(c))) PlayStoreGuard.lock(c);
-        else PlayStoreGuard.unlock(c);
+        // Estudiante y Profesor usan usuarios efímeros sin tiendas ni instalación.
+        PlayStoreGuard.lock(c);
         try{
             DevicePolicyManager d=dpm(c);ComponentName a=admin(c);String self=c.getPackageName();
-            // Before supervision is active, Aula Móvil itself is the HOME target.
-            // This prevents the OEM launcher from flashing or becoming interactive
-            // during the managed-user handoff. Once the session is ACTIVE and
-            // capture is alive, MainActivity releases HOME back to the OEM launcher.
-            if(SessionState.isActive(c)&&ScreenCaptureService.active) homeGuardOff(c);
-            else homeGuardOn(c);
+
+            // El HOME protegido permanece hasta que la sesión alcanza ACTIVE.
+            // Una pérdida posterior de MediaProjection NO expulsa al usuario.
+            if(SessionState.isActive(c)) homeGuardOff(c); else homeGuardOn(c);
+
             d.setAffiliationIds(a,Collections.singleton(SessionUsers.AFFILIATION));
             d.setUninstallBlocked(a,self,true);
             try{d.setLockTaskPackages(a,new String[]{self});}catch(Exception ignored){}
             restriction(d,a,UserManager.DISALLOW_UNINSTALL_APPS,true);
-            restriction(d,a,UserManager.DISALLOW_INSTALL_APPS,Core.ROLE_STUDENT.equals(Core.role(c)));
+            restriction(d,a,UserManager.DISALLOW_INSTALL_APPS,true);
             restriction(d,a,UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES,true);
             restriction(d,a,UserManager.DISALLOW_DEBUGGING_FEATURES,true);
             restriction(d,a,UserManager.DISALLOW_ADD_USER,true);
             restriction(d,a,UserManager.DISALLOW_USER_SWITCH,true);
             restriction(d,a,UserManager.DISALLOW_APPS_CONTROL,true);
+            restriction(d,a,UserManager.DISALLOW_FACTORY_RESET,true);
+            restriction(d,a,UserManager.DISALLOW_SAFE_BOOT,true);
+            restriction(d,a,UserManager.DISALLOW_CONFIG_VPN,true);
+            restriction(d,a,UserManager.DISALLOW_USB_FILE_TRANSFER,true);
+            restriction(d,a,UserManager.DISALLOW_MOUNT_PHYSICAL_MEDIA,true);
+            restriction(d,a,UserManager.DISALLOW_CONFIG_LOCATION,true);
+
+            // Cuentas personales sí están permitidas dentro del usuario temporal.
             restriction(d,a,UserManager.DISALLOW_MODIFY_ACCOUNTS,false);
             restriction(d,a,UserManager.DISALLOW_CONFIG_WIFI,false);
             restriction(d,a,UserManager.DISALLOW_BLUETOOTH,false);
+            if(Build.VERSION.SDK_INT>=28)try{d.setLocationEnabled(a,true);}catch(Exception ignored){}
             grantManagedPermissions(c,d,a,self);
         }catch(Exception ignored){}
     }
@@ -164,6 +175,10 @@ final class Managed {
             restriction(d,a,UserManager.DISALLOW_DEBUGGING_FEATURES,false);
             restriction(d,a,UserManager.DISALLOW_FACTORY_RESET,false);
             restriction(d,a,UserManager.DISALLOW_SAFE_BOOT,false);
+            restriction(d,a,UserManager.DISALLOW_CONFIG_LOCATION,false);
+            restriction(d,a,UserManager.DISALLOW_CONFIG_VPN,false);
+            restriction(d,a,UserManager.DISALLOW_USB_FILE_TRANSFER,false);
+            restriction(d,a,UserManager.DISALLOW_MOUNT_PHYSICAL_MEDIA,false);
             d.setUninstallBlocked(a,c.getPackageName(),false);
             try{d.setLockTaskPackages(a,new String[]{c.getPackageName()});}catch(Exception ignored){}
             try{d.setStatusBarDisabled(a,false);}catch(Exception ignored){}
@@ -188,6 +203,10 @@ final class Managed {
             restriction(d,a,UserManager.DISALLOW_DEBUGGING_FEATURES,false);
             restriction(d,a,UserManager.DISALLOW_FACTORY_RESET,false);
             restriction(d,a,UserManager.DISALLOW_SAFE_BOOT,false);
+            restriction(d,a,UserManager.DISALLOW_CONFIG_LOCATION,false);
+            restriction(d,a,UserManager.DISALLOW_CONFIG_VPN,false);
+            restriction(d,a,UserManager.DISALLOW_USB_FILE_TRANSFER,false);
+            restriction(d,a,UserManager.DISALLOW_MOUNT_PHYSICAL_MEDIA,false);
             try{d.setStatusBarDisabled(a,false);}catch(Exception ignored){}
             try{d.setLockTaskPackages(a,new String[]{});}catch(Exception ignored){}
             d.setUninstallBlocked(a,c.getPackageName(),false);
