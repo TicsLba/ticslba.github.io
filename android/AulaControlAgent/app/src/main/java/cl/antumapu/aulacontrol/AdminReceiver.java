@@ -38,7 +38,7 @@ public class AdminReceiver extends DeviceAdminReceiver {
     }
 
     private void launchGuest(Context c){
-        try{c.startActivity(new Intent(c,SplashActivity.class)
+        try{c.startActivity(new Intent(c,HomeGateActivity.class)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP));}
         catch(Exception ignored){}
     }
