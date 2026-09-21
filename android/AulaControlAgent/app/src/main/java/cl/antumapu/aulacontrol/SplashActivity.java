@@ -48,11 +48,11 @@ public class SplashActivity extends Activity {
         circle.setCornerRadius(dp(28));
         mark.setBackground(circle);
         ImageView logo = new ImageView(this);
-        logo.setImageResource(R.drawable.ic_tablet_school_mark);
+        logo.setImageResource(R.drawable.lba_logo);
         mark.addView(logo, new LinearLayout.LayoutParams(dp(82), dp(82)));
         root.addView(mark, new LinearLayout.LayoutParams(dp(108), dp(108)));
 
-        TextView title = text("Tablet Escolar", 31, true, Color.WHITE);
+        TextView title = text("Aula Móvil", 31, true, Color.WHITE);
         LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(-2, -2);
         tp.topMargin = dp(22);
         root.addView(title, tp);
