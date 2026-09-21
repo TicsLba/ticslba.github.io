@@ -16,6 +16,7 @@ public class AdminReceiver extends DeviceAdminReceiver {
             RelayPrefs.setupGuest(c,i);
             SessionState.guestSetup(c);
             Managed.applyGuest(c);
+            AppPolicy.applyGuest(c);
             launchGuest(c);
             new Handler(Looper.getMainLooper()).postDelayed(()->launchGuest(c),600);
             return;
