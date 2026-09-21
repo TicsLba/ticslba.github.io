@@ -18,7 +18,7 @@ import java.util.concurrent.*;
 
 public class AgentService extends Service {
     static final int UDP=45888,CMD=45901,SESSION_NOTIFICATION=1001;
-    static final long WARN=30_000L;
+    static final long WARN=120_000L;
     static final String KEEP="AC_KEEP",LOGOUT="AC_LOGOUT";
     volatile boolean run,warn;
     ScheduledExecutorService ex;
@@ -71,7 +71,7 @@ public class AgentService extends Service {
         if(warn||Core.user(this).isEmpty()||!SessionState.isActive(this))return;warn=true;
         Intent ki=new Intent(this,AgentService.class).setAction(KEEP),lo=new Intent(this,AgentService.class).setAction(LOGOUT);
         PendingIntent kp=PendingIntent.getService(this,201,ki,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE),lp=PendingIntent.getService(this,202,lo,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
-        Notification.Builder b=builder("agent",NotificationManager.IMPORTANCE_HIGH).setContentTitle("Aula Móvil · ¿sigues ahí?").setContentText("La sesión se cerrará en 30 segundos").setSmallIcon(android.R.drawable.ic_dialog_alert).setOngoing(true).setOnlyAlertOnce(true).addAction(new Notification.Action.Builder(null,"Seguiré usando",kp).build()).addAction(new Notification.Action.Builder(null,"Cerrar sesión",lp).build());
+        Notification.Builder b=builder("agent",NotificationManager.IMPORTANCE_HIGH).setContentTitle("Aula Móvil · ¿sigues ahí?").setContentText("La sesión se cerrará en 2 minutos").setSmallIcon(android.R.drawable.ic_dialog_alert).setOngoing(true).setOnlyAlertOnce(true).addAction(new Notification.Action.Builder(null,"Seguiré usando",kp).build()).addAction(new Notification.Action.Builder(null,"Cerrar sesión",lp).build());
         ((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).notify(SESSION_NOTIFICATION,b.build());
         try{startActivity(new Intent(this,SessionWarningActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP));}catch(Exception ignored){}
         ui.removeCallbacks(autoLogout);ui.postDelayed(autoLogout,WARN);
