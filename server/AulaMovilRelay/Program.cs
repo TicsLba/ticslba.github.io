@@ -196,7 +196,7 @@ public sealed class RelayStore{
     }
     public (byte[] Bytes,string Name)? GetFile(string token){
         if(string.IsNullOrWhiteSpace(token)||token.Any(ch=>!char.IsLetterOrDigit(ch)))return null;
-        lock(gate){var b=Path.Combine(fileDir,token+".bin"),m=Path.Combine(fileDir,token+".json");if(!File.Exists(b)||!File.Exists(m))return null;if(DateTime.UtcNow-File.GetCreationTimeUtc(b)>TimeSpan.FromHours(4))return null;try{var n=JsonNode.Parse(File.ReadAllText(m)) as JsonObject;return(File.ReadAllBytes(b),n?["name"]?.GetValue<string>()??"archivo.bin");}catch{return null;}}
+        lock(gate){var b=Path.Combine(fileDir,token+".bin");var m=Path.Combine(fileDir,token+".json");if(!File.Exists(b)||!File.Exists(m))return null;if(DateTime.UtcNow-File.GetCreationTimeUtc(b)>TimeSpan.FromHours(4))return null;try{var n=JsonNode.Parse(File.ReadAllText(m)) as JsonObject;return(File.ReadAllBytes(b),n?["name"]?.GetValue<string>()??"archivo.bin");}catch{return null;}}
     }
 
     public void PutScreen(string id,long frameTs,string payload){
