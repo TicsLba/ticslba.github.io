@@ -24,7 +24,7 @@
 
  <application
   android:allowBackup="false"
-  android:label="Tablet Escolar"
+  android:label="Aula Móvil"
   android:icon="@drawable/ic_tablet_school_app"
   android:roundIcon="@drawable/ic_tablet_school_app"
   android:theme="@style/AppTheme"
