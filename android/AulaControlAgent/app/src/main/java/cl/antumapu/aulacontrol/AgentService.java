@@ -133,6 +133,9 @@ public class AgentService extends Service {
         case"INSTALL_APK":if(!Managed.owner(this))return"owner-required";Installer.installAsync(this,v);return null;
         case"UNINSTALL_PACKAGE":if(!Managed.owner(this))return"owner-required";PackageOps.uninstallAsync(this,v);return null;
         case"SET_ADMIN_PASSWORD":return Core.setAdminPassword(this,v)?null:"owner-or-password";
+        case"SET_APP_POLICY":return Managed.owner(this)&&AppPolicy.saveOwnerPolicy(this,v)?null:"owner-or-policy";
+        case"SYNC_APP_POLICY":if(Managed.profileOwner(this)){AppPolicy.applyGuest(this);return null;}return"profile-required";
+        case"APP_INVENTORY":InventoryReporter.send(this);return null;
         case"SET_RELAY_URL":if(v==null||v.isEmpty()||v.toLowerCase().startsWith("https://")){RelayPrefs.url(this,v);return null;}return"relay-must-use-https";
         default:return"unknown";
     }}
