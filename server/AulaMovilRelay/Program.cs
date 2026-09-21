@@ -36,6 +36,20 @@ app.MapPost("/relay",async(HttpRequest req,RelayStore store,RelaySecurity sec)=>
     }
 });
 
+app.MapPost("/api/file",async(HttpRequest req,RelayStore store,RelaySecurity sec)=>{
+    var tag=req.Headers["X-Aula-Tag"].ToString();var sig=req.Headers["X-Signature"].ToString();var sha=req.Headers["X-SHA256"].ToString().ToLowerInvariant();
+    if(!long.TryParse(req.Headers["X-Timestamp"],out var ts)||!Fresh(ts,120_000)||!sec.ValidTag(tag))return Results.StatusCode(403);
+    long len=req.ContentLength??-1;if(len<0||len>250L*1024*1024||sha.Length!=64)return Results.BadRequest(new{ok=false,error="file-size"});
+    if(!sec.Eq(sig,sec.Hmac($"fileUpload\n{tag}\n{ts}\n{sha}\n{len}")))return Results.StatusCode(403);
+    using var ms=new MemoryStream();await req.Body.CopyToAsync(ms);var bytes=ms.ToArray();
+    var got=Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();if(got!=sha)return Results.BadRequest(new{ok=false,error="sha256"});
+    var name=req.Headers["X-File-Name"].ToString();var token=store.SaveFile(bytes,name,sha);
+    return Results.Json(new{ok=true,token,path="/files/"+token,sha256=sha,size=bytes.Length});
+});
+app.MapGet("/files/{token}",(string token,RelayStore store)=>{
+    var f=store.GetFile(token);return f is null?Results.NotFound():Results.File(f.Value.Bytes,"application/octet-stream",f.Value.Name,enableRangeProcessing:true);
+});
+
 app.Run();
 
 static IResult Telemetry(JsonObject b,RelayStore store,RelaySecurity sec){
@@ -132,7 +146,7 @@ public sealed class CommandRecord{
 
 public sealed class RelayStore{
     readonly object gate=new();
-    readonly string root,latestDir,commandDir,screenDir,telemetryDir,eventDir,auditDir;
+    readonly string root,latestDir,commandDir,screenDir,telemetryDir,eventDir,auditDir,fileDir;
     readonly int retentionDays;
     long lastCleanup;
     readonly JsonSerializerOptions json=new(){WriteIndented=false};
@@ -140,7 +154,7 @@ public sealed class RelayStore{
     public RelayStore(){
         root=Environment.GetEnvironmentVariable("AULAMOVIL_DATA")??Path.Combine(AppContext.BaseDirectory,"data");
         retentionDays=Math.Clamp(int.TryParse(Environment.GetEnvironmentVariable("AULAMOVIL_RETENTION_DAYS"),out var d)?d:30,1,3650);
-        latestDir=D("latest");commandDir=D("commands");screenDir=D("screens");telemetryDir=D("telemetry");eventDir=D("events");auditDir=D("audit");
+        latestDir=D("latest");commandDir=D("commands");screenDir=D("screens");telemetryDir=D("telemetry");eventDir=D("events");auditDir=D("audit");fileDir=D("files");
     }
     string D(string n){var p=Path.Combine(root,n);Directory.CreateDirectory(p);return p;}
     static string Safe(string s)=>string.Concat((s??"").Select(ch=>char.IsLetterOrDigit(ch)||ch is '-' or '_' or '.'?ch:'_'));
@@ -175,6 +189,16 @@ public sealed class RelayStore{
     }
     public object[] CommandStatus(string id){lock(gate)return Directory.EnumerateFiles(commandDir,"*.json").Select(LoadCommand).Where(x=>x is not null&&(string.IsNullOrWhiteSpace(id)||x.DeviceId==id)).OrderByDescending(x=>x!.CreatedAt).Take(500).Cast<object>().ToArray();}
 
+    public string SaveFile(byte[] bytes,string name,string sha){
+        var token=Guid.NewGuid().ToString("N");var safe=Safe(string.IsNullOrWhiteSpace(name)?"archivo.bin":Path.GetFileName(name));
+        lock(gate){File.WriteAllBytes(Path.Combine(fileDir,token+".bin"),bytes);File.WriteAllText(Path.Combine(fileDir,token+".json"),JsonSerializer.Serialize(new{name=safe,sha,createdAt=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()},json));}
+        return token;
+    }
+    public (byte[] Bytes,string Name)? GetFile(string token){
+        if(string.IsNullOrWhiteSpace(token)||token.Any(ch=>!char.IsLetterOrDigit(ch)))return null;
+        lock(gate){var b=Path.Combine(fileDir,token+".bin"),m=Path.Combine(fileDir,token+".json");if(!File.Exists(b)||!File.Exists(m))return null;if(DateTime.UtcNow-File.GetCreationTimeUtc(b)>TimeSpan.FromHours(4))return null;try{var n=JsonNode.Parse(File.ReadAllText(m)) as JsonObject;return(File.ReadAllBytes(b),n?["name"]?.GetValue<string>()??"archivo.bin");}catch{return null;}}
+    }
+
     public void PutScreen(string id,long frameTs,string payload){
         lock(gate)File.WriteAllText(Path.Combine(screenDir,Safe(id)+".json"),JsonSerializer.Serialize(new ScreenFrame(frameTs,payload),json));
     }
@@ -205,6 +229,7 @@ public sealed class RelayStore{
             var cutoff=DateTime.UtcNow.AddDays(-retentionDays);
             foreach(var dir in new[]{telemetryDir,eventDir,auditDir})foreach(var f in Directory.EnumerateFiles(dir,"*.jsonl"))if(File.GetLastWriteTimeUtc(f)<cutoff)try{File.Delete(f);}catch{}
             foreach(var f in Directory.EnumerateFiles(commandDir,"*.json"))if(File.GetLastWriteTimeUtc(f)<cutoff)try{File.Delete(f);}catch{}
+            foreach(var f in Directory.EnumerateFiles(fileDir,"*.*"))if(DateTime.UtcNow-File.GetLastWriteTimeUtc(f)>TimeSpan.FromHours(4))try{File.Delete(f);}catch{}
         }
     }
 }
