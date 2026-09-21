@@ -20,7 +20,7 @@ final class Core {
     static final double[] ALLOWED_FPS={0.5,1,2,4,6};
     static final String K_ROLE="role", K_NAME="name", K_COURSE="course", K_DEVICE_NAME="deviceName",
             K_DEVICE_ID="deviceId", K_KEY="key", K_ADMIN_SALT="adminSalt", K_ADMIN_HASH="adminHash",
-            K_AFFILIATION="affiliation", K_IDLE_STUDENT="idleStudent", K_IDLE_TEACHER="idleTeacher";
+            K_AFFILIATION="affiliation", K_IDLE_STUDENT="idleStudent", K_IDLE_TEACHER="idleTeacher", K_APPS="appsForSession";
     private Core(){}
 
     static android.content.SharedPreferences sp(Context c){return c.getSharedPreferences(P,Context.MODE_PRIVATE);}
@@ -88,6 +88,7 @@ final class Core {
         String role=b.getString(K_ROLE,ROLE_STUDENT);
         String name=b.getString(K_NAME,"");
         String course=b.getString(K_COURSE,"");
+        String apps=b.getString(K_APPS,"[]");
         if(technical.isEmpty()||deviceName.isEmpty()||deviceId.isEmpty()||name.isEmpty())return;
         if(!ROLE_STUDENT.equals(role)&&!ROLE_TEACHER.equals(role))return;
 
@@ -102,6 +103,7 @@ final class Core {
                 .putString("role",role)
                 .putString("user_enc",Secrets.encrypt(name))
                 .putString("course_enc",Secrets.encrypt(course))
+                .putString(AppPolicy.K_APPS,apps)
                 .putInt("idle_student_min",Math.max(1,b.getInt(K_IDLE_STUDENT,10)))
                 .putInt("idle_teacher_min",Math.max(1,b.getInt(K_IDLE_TEACHER,30)))
                 .putLong("last",System.currentTimeMillis())
