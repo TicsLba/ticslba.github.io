@@ -1,3 +1,6 @@
+using Microsoft.Win32;
+using System.Security.Cryptography;
+using System.Text.Json;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Net.Http;
@@ -181,6 +184,7 @@ public class MainWindow : Window
         bar.Children.Add(Action("Abrir enlace",async(_,_)=>await PromptSend("OPEN_URL","Abrir enlace")));
         bar.Children.Add(Action("Abrir app",async(_,_)=>await PromptSend("LAUNCH_APP","Abrir aplicación")));
         bar.Children.Add(Action("Refresco",async(_,_)=>await SetFps(),SoftTeal,Navy));
+        bar.Children.Add(Action("Instalar APK",async(_,_)=>await InstallApkSelected(),SoftGold,Navy));
         bar.Children.Add(Action("Atención",async(_,_)=>await PromptSend("ATTENTION_ON","Modo atención"),Navy));
         bar.Children.Add(Action("Liberar atención",async(_,_)=>await SendSelected("ATTENTION_OFF"),Teal));
         bar.Children.Add(Action("Cerrar sesión",async(_,_)=>await SendSelected("FORCE_LOGOUT"),Red));
@@ -418,6 +422,26 @@ public class MainWindow : Window
     {
         string help=action=="MESSAGE"?"Mensaje breve que verá el usuario":action=="OPEN_URL"?"URL completa (https://...)":action=="LAUNCH_APP"?"Nombre de paquete Android, por ejemplo com.google.android.youtube":"Mensaje que ocupará la pantalla durante Atención";var x=Ask(title,help,false);if(!string.IsNullOrWhiteSpace(x))await SendSelected(action,x);
     }
+    async Task InstallApkSelected()
+    {
+        var s=Selected().Where(IsLocal).ToList();
+        if(s.Count==0){MessageBox.Show("Selecciona al menos una tablet visible por LAN.","Aula Móvil");return;}
+        var dlg=new OpenFileDialog{Filter="Aplicación Android (*.apk)|*.apk",Title="Seleccionar APK"};
+        if(dlg.ShowDialog(this)!=true)return;
+        string sha=Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(dlg.FileName))).ToLowerInvariant();
+        var server=new ApkPushServer(dlg.FileName);
+        int sent=0;
+        foreach(var d in s)
+        {
+            string local=ApkPushServer.LocalAddressFor(d.Ip);
+            string payload=JsonSerializer.Serialize(new{url=$"http://{local}:{server.Port}/app.apk",sha256=sha});
+            var r=await commands!.Send(d,"INSTALL_APK",payload);
+            if(r.Item1)sent++; else footer.Text=$"{d.Name}: {r.Item2}";
+        }
+        _=Task.Run(async()=>{await Task.Delay(TimeSpan.FromMinutes(2));server.Dispose();});
+        MessageBox.Show($"APK ofrecido a {sent} tablet(s). Mantén Aula Móvil abierto durante la descarga.\n\nSHA-256: {sha}","Aula Móvil");
+    }
+
     async Task SetFps()
     {
         var x=Ask("Frecuencia de pantalla","Elige 0.5, 1, 2, 4 o 6 FPS. Usa 1–2 FPS para mosaicos grandes y 4–6 FPS para una tablet individual.",false,"2");
