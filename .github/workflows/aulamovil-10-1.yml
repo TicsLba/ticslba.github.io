@@ -40,6 +40,8 @@ jobs:
           grep -q 'REMOTE_SCREEN_ON' android/AulaControlAgent/app/src/main/java/cl/antumapu/aulacontrol/AgentService.java
           grep -q 'Core.supervisionStarted(this,false);' android/AulaControlAgent/app/src/main/java/cl/antumapu/aulacontrol/ScreenCaptureService.java
           grep -q 'AppPolicy.applyGuest' android/AulaControlAgent/app/src/main/java/cl/antumapu/aulacontrol/AdminReceiver.java
+          grep -q 'BORRAR TABLET' android/AulaControlAgent/app/src/main/java/cl/antumapu/aulacontrol/MainActivity.java
+          grep -q 'WARN=120_000L' android/AulaControlAgent/app/src/main/java/cl/antumapu/aulacontrol/AgentService.java
       - uses: actions/upload-artifact@v4
         with:
           name: AulaMovil-11-Android-unsigned
@@ -75,4 +77,21 @@ jobs:
         with:
           name: AulaMovil-11-Relay-linux-x64
           path: server-publish/
+          if-no-files-found: error
+
+
+  relay-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Publish Relay Windows x64
+        shell: pwsh
+        run: dotnet publish server/AulaMovilRelay/AulaMovilRelay.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o server-publish-win
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AulaMovil-11-Relay-windows-x64
+          path: server-publish-win/
           if-no-files-found: error
