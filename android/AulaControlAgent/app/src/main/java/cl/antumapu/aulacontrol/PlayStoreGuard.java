@@ -9,14 +9,12 @@ import android.os.Build;
 import android.content.pm.PackageManager;
 
 /**
- * Aula Móvil 10.1 policy:
- * - Google Play is NEVER hidden.
- * - Administrator: available.
- * - Teacher: available.
- * - Student: temporarily suspended only for the lifetime of the ephemeral session.
+ * Aula Móvil 11 policy:
+ * - Propietario/Administrador: Google Play disponible.
+ * - Estudiante y Profesor: Google Play oculto y suspendido únicamente dentro
+ *   del usuario Android temporal. Ese usuario se elimina al cerrar sesión.
  *
- * This intentionally avoids setApplicationHidden(..., true) so an interrupted
- * student session cannot leave Google Play permanently hidden in the owner user.
+ * Nunca se oculta Google Play en el usuario Propietario.
  */
 final class PlayStoreGuard {
     static final String PACKAGE = "com.android.vending";
@@ -30,17 +28,15 @@ final class PlayStoreGuard {
         }catch(Exception e){return false;}
     }
 
-    /** Student-only temporary restriction. Never hides Google Play. */
     static boolean lock(Context c){
-        if(!Managed.managed(c))return false;
+        if(!Managed.profileOwner(c))return false;
         DevicePolicyManager d=Managed.dpm(c); ComponentName a=Managed.admin(c);
         boolean ok=true;
-        try{d.setApplicationHidden(a,PACKAGE,false);}catch(Exception ignored){}
         try{d.setPackagesSuspended(a,new String[]{PACKAGE},true);}catch(Exception e){ok=false;}
+        try{d.setApplicationHidden(a,PACKAGE,true);}catch(Exception e){ok=false;}
         return ok;
     }
 
-    /** Restores Google Play to an ordinary visible, unsuspended state. */
     static boolean unlock(Context c){
         if(!Managed.managed(c))return false;
         DevicePolicyManager d=Managed.dpm(c); ComponentName a=Managed.admin(c);
@@ -54,8 +50,6 @@ final class PlayStoreGuard {
         return Managed.owner(c)&&Core.adminMode(c)&&available(c)&&unlock(c);
     }
 
-    // Kept for source compatibility with older branches; 10.1 never relocks
-    // Google Play merely because an administrator leaves the Play Store.
     static long remaining(Context c){return 0;}
     static void relockIfExpired(Context c){}
 
