@@ -51,12 +51,12 @@ public class MainActivity extends Activity {
             agent();
             SessionState.State s=SessionState.get(this);
             if(s==SessionState.State.ACTIVE){
-                if(!ScreenCaptureService.active){SessionState.guestSetup(this);Core.supervisionStarted(this,false);Managed.enterGate(this);guestStartUi("La supervisión se interrumpió. Autorízala nuevamente para continuar.");}
-                else{Managed.exitGate(this);sessionUi();}
+                if(!ScreenCaptureService.active){SessionState.guestSetup(this);Core.supervisionStarted(this,false);Managed.homeGuardOn(this);Managed.enterGate(this);guestStartUi("La supervisión se interrumpió. Autorízala nuevamente para continuar.");}
+                else{Managed.homeGuardOff(this);Managed.exitGate(this);sessionUi();}
                 return;
             }
-            if(s==SessionState.State.CLOSING){Managed.enterGate(this);closingUi();return;}
-            Managed.enterGate(this);guestStartUi(null);return;
+            if(s==SessionState.State.CLOSING){Managed.homeGuardOn(this);Managed.enterGate(this);closingUi();return;}
+            Managed.homeGuardOn(this);Managed.enterGate(this);guestStartUi(null);return;
         }
 
         if(!Core.ready(this)){setupUi();return;}
@@ -88,7 +88,7 @@ public class MainActivity extends Activity {
         LinearLayout h=new LinearLayout(this);h.setOrientation(LinearLayout.VERTICAL);h.setPadding(dp(20),dp(19),dp(20),dp(20));h.setBackground(gradient(NAVY,accent,24));margins(h,0,0,0,12);
         LinearLayout brand=new LinearLayout(this);brand.setGravity(Gravity.CENTER_VERTICAL);
         ImageView logo=new ImageView(this);logo.setImageResource(R.drawable.lba_logo);logo.setScaleType(ImageView.ScaleType.CENTER_INSIDE);LinearLayout mark=new LinearLayout(this);mark.setGravity(Gravity.CENTER);mark.setBackground(shape(WHITE,17));mark.addView(logo,new LinearLayout.LayoutParams(dp(42),dp(42)));brand.addView(mark,new LinearLayout.LayoutParams(dp(52),dp(52)));
-        LinearLayout names=new LinearLayout(this);names.setOrientation(LinearLayout.VERTICAL);names.setPadding(dp(12),0,0,0);names.addView(text("Aula Móvil",22,true,WHITE));names.addView(text("10.1 · Gestión institucional",12,false,Color.rgb(221,230,255)));brand.addView(names);h.addView(brand);
+        LinearLayout names=new LinearLayout(this);names.setOrientation(LinearLayout.VERTICAL);names.setPadding(dp(12),0,0,0);names.addView(text("Aula Móvil",22,true,WHITE));names.addView(text("10.1.1 · Gestión institucional",12,false,Color.rgb(221,230,255)));brand.addView(names);h.addView(brand);
         TextView e=text(eyebrow,11,true,Color.rgb(221,235,255));e.setAllCaps(true);e.setLetterSpacing(.08f);e.setPadding(0,dp(17),0,dp(5));h.addView(e);
         h.addView(text(title,29,true,WHITE));TextView s=text(subtitle,14,false,Color.rgb(234,239,255));s.setPadding(0,dp(7),0,0);s.setLineSpacing(0,1.08f);h.addView(s);r.addView(h);
     }
@@ -159,6 +159,7 @@ public class MainActivity extends Activity {
     }
 
     void guestStartUi(String warning){
+        Managed.homeGuardOn(this);
         ScrollView sc=shell();LinearLayout r=root();sc.addView(r);hero(r,"SESIÓN TEMPORAL","Hola, "+first(Core.user(this)),"Tu espacio privado está preparado. Falta iniciar la supervisión visible de esta sesión.",TEAL);
         LinearLayout c=card();c.addView(chip("ESPACIO AISLADO",TEAL,Color.rgb(229,250,245)));c.addView(info("USUARIO",Core.user(this),TEAL));c.addView(info("ROL",Core.roleLabel(this)+(Core.course(this).isEmpty()?"":" · "+Core.course(this)),COBALT));c.addView(text("Al cerrar la sesión, Android elimina este usuario temporal con sus cuentas y datos locales.",13,false,MUTED));r.addView(c);
         if(warning!=null){TextView w=text(warning,13,true,CORAL);w.setPadding(dp(14),dp(12),dp(14),dp(12));w.setBackground(shape(Color.rgb(255,239,241),14));margins(w,0,2,0,8);r.addView(w);}
@@ -203,12 +204,13 @@ public class MainActivity extends Activity {
     }
 
     void openHome(){
-        if(Managed.profileOwner(this)&&(!SessionState.isActive(this)||!ScreenCaptureService.active)){SessionState.guestSetup(this);Managed.enterGate(this);guestStartUi("La sesión aún no está lista para abrir Android.");return;}
+        if(Managed.profileOwner(this)&&(!SessionState.isActive(this)||!ScreenCaptureService.active)){SessionState.guestSetup(this);Managed.homeGuardOn(this);Managed.enterGate(this);guestStartUi("La sesión aún no está lista para abrir Android.");return;}
+        if(Managed.profileOwner(this))Managed.homeGuardOff(this);
         Managed.exitGate(this);try{Intent h=new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);startActivity(h);moveTaskToBack(true);}catch(Exception e){toast("No se encontró el inicio de Android");}
     }
     void openSettings(){try{startActivity(new Intent(Settings.ACTION_SETTINGS));}catch(Exception e){toast("No se pudieron abrir Ajustes");}}
     void confirmLogout(){new AlertDialog.Builder(this).setTitle("Cerrar sesión").setMessage("Se eliminará el usuario Android temporal y con él las cuentas y datos locales de esta sesión.").setNegativeButton("Cancelar",null).setPositiveButton("Cerrar sesión",(d,w)->endGuest()).show();}
-    void endGuest(){SessionState.set(this,SessionState.State.CLOSING);Core.supervisionStarted(this,false);stopService(new Intent(this,ScreenCaptureService.class));Managed.enterGate(this);closingUi();ui.postDelayed(()->new Thread(()->SessionUsers.logoutGuest(this),"TabletEscolarLogout").start(),500);}
+    void endGuest(){SessionState.set(this,SessionState.State.CLOSING);Core.supervisionStarted(this,false);stopService(new Intent(this,ScreenCaptureService.class));Managed.homeGuardOn(this);Managed.enterGate(this);closingUi();ui.postDelayed(()->new Thread(()->SessionUsers.logoutGuest(this),"TabletEscolarLogout").start(),500);}
     void closingUi(){ScrollView sc=shell();LinearLayout r=root();sc.addView(r);hero(r,"CERRANDO SESIÓN","Protegiendo tus datos","Android está eliminando el usuario temporal antes de volver al acceso institucional.",VIOLET);LinearLayout c=card();c.addView(step("✓","Supervisión finalizada",TEAL));c.addView(step("✓","Sesión bloqueada",TEAL));c.addView(step("●","Eliminando usuario temporal",COBALT));c.addView(step("○","Volviendo a acceso institucional",VIOLET));r.addView(c);setAnimated(sc);}
 
     void askAdmin(){
