@@ -44,7 +44,7 @@ final class Managed {
      * during student/teacher sessions.
      */
     static void homeGuardOn(Context c){
-        if(!owner(c))return;
+        if(!managed(c))return;
         try{
             DevicePolicyManager d=dpm(c);ComponentName a=admin(c);ComponentName h=homeGuard(c);
             c.getPackageManager().setComponentEnabledSetting(
@@ -111,8 +111,12 @@ final class Managed {
         else PlayStoreGuard.unlock(c);
         try{
             DevicePolicyManager d=dpm(c);ComponentName a=admin(c);String self=c.getPackageName();
-            // Never act as HOME inside a student/teacher session.
-            homeGuardOff(c);
+            // Before supervision is active, Aula Móvil itself is the HOME target.
+            // This prevents the OEM launcher from flashing or becoming interactive
+            // during the managed-user handoff. Once the session is ACTIVE and
+            // capture is alive, MainActivity releases HOME back to the OEM launcher.
+            if(SessionState.isActive(c)&&ScreenCaptureService.active) homeGuardOff(c);
+            else homeGuardOn(c);
             d.setAffiliationIds(a,Collections.singleton(SessionUsers.AFFILIATION));
             d.setUninstallBlocked(a,self,true);
             try{d.setLockTaskPackages(a,new String[]{self});}catch(Exception ignored){}
