@@ -1,6 +1,8 @@
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Security.Cryptography;
+using System.IO;
 
 namespace AulaControlTeacher;
 
@@ -85,6 +87,22 @@ public sealed class RemoteClient : IDisposable
         string payload=doc.RootElement.TryGetProperty("payload",out var p)?p.GetString()??"":"";
         if(string.IsNullOrWhiteSpace(payload))return null;
         try{return AcCrypto.Open(key,Convert.FromBase64String(payload));}catch{return null;}
+    }
+
+    public async Task<(bool,string,string)> UploadFileAsync(string filePath)
+    {
+        if(!Enabled||!System.IO.File.Exists(filePath))return(false,"Relay no configurado o archivo inexistente","");
+        try{
+            byte[] bytes=await System.IO.File.ReadAllBytesAsync(filePath);string sha=Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
+            long ts=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();long len=bytes.LongLength;
+            string sig=AcCrypto.Hmac(key,$"fileUpload\n{tag}\n{ts}\n{sha}\n{len}");
+            var relay=new Uri(url);var target=new Uri(relay,"/api/file");
+            using var req=new HttpRequestMessage(HttpMethod.Post,target);req.Content=new ByteArrayContent(bytes);req.Content.Headers.ContentType=new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+            req.Headers.Add("X-Aula-Tag",tag);req.Headers.Add("X-Timestamp",ts.ToString());req.Headers.Add("X-SHA256",sha);req.Headers.Add("X-Signature",sig);req.Headers.Add("X-File-Name",Path.GetFileName(filePath));
+            using var resp=await http.SendAsync(req);if(!resp.IsSuccessStatusCode)return(false,"El relay rechazó el archivo","");
+            using var doc=JsonDocument.Parse(await resp.Content.ReadAsStringAsync());if(!doc.RootElement.TryGetProperty("ok",out var ok)||!ok.GetBoolean())return(false,"Carga fallida","");
+            string path=doc.RootElement.GetProperty("path").GetString()??"";return(true,sha,new Uri(relay,path).ToString());
+        }catch(Exception e){return(false,e.Message,"");}
     }
 
     public async Task<(bool,string)> CancelCommandAsync(string commandId)
