@@ -7,6 +7,7 @@ import org.json.*;
 import java.io.*;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Relay HTTPS de Aula Móvil 11.
@@ -14,6 +15,7 @@ import java.nio.charset.StandardCharsets;
  * supervisión remota, únicamente el último cuadro cifrado. No archiva video.
  */
 final class RemoteRelay {
+    private static final AtomicBoolean screenBusy=new AtomicBoolean(false);
     private RemoteRelay(){}
 
     static void pulse(AgentService service){
@@ -71,7 +73,8 @@ final class RemoteRelay {
 
     static void uploadScreenAsync(Context c,byte[] jpg,long frameTs){
         if(c==null||jpg==null||jpg.length==0||!Core.remoteScreenRequested(c))return;
-        new Thread(()->uploadScreen(c.getApplicationContext(),jpg,frameTs),"AulaMovilRemoteFrame").start();
+        if(!screenBusy.compareAndSet(false,true))return;
+        new Thread(()->{try{uploadScreen(c.getApplicationContext(),jpg,frameTs);}finally{screenBusy.set(false);}},"AulaMovilRemoteFrame").start();
     }
 
     private static void uploadScreen(Context c,byte[] jpg,long frameTs){
