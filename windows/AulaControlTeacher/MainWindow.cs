@@ -447,22 +447,36 @@ public class MainWindow : Window
     }
     async Task InstallApkSelected()
     {
-        var s=Selected().Where(IsLocal).ToList();
-        if(s.Count==0){MessageBox.Show("Selecciona al menos una tablet visible por LAN.","Aula Móvil");return;}
+        var s=Selected();
+        if(s.Count==0){MessageBox.Show("Selecciona al menos una tablet.","Aula Móvil");return;}
         var dlg=new OpenFileDialog{Filter="Aplicación Android (*.apk)|*.apk",Title="Seleccionar APK"};
         if(dlg.ShowDialog(this)!=true)return;
         string sha=Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(dlg.FileName))).ToLowerInvariant();
-        var server=new ApkPushServer(dlg.FileName);
-        int sent=0;
-        foreach(var d in s)
-        {
-            string local=ApkPushServer.LocalAddressFor(d.Ip);
-            string payload=JsonSerializer.Serialize(new{url=$"http://{local}:{server.Port}/app.apk",sha256=sha});
-            var r=await commands!.Send(d,"INSTALL_APK",payload);
-            if(r.Item1)sent++; else footer.Text=$"{d.Name}: {r.Item2}";
+        int sent=0;ApkPushServer? lanServer=null;
+        var local=s.Where(IsLocal).ToList();var away=s.Where(x=>!IsLocal(x)).ToList();
+
+        if(local.Count>0){
+            lanServer=new ApkPushServer(dlg.FileName);
+            foreach(var d in local){
+                string host=ApkPushServer.LocalAddressFor(d.Ip);
+                string payload=JsonSerializer.Serialize(new{url=$"http://{host}:{lanServer.Port}/app.apk",sha256=sha});
+                var rr=await commands!.Send(d,"INSTALL_APK",payload);if(rr.Item1)sent++;else footer.Text=$"{d.Name}: {rr.Item2}";
+            }
         }
-        _=Task.Run(async()=>{await Task.Delay(TimeSpan.FromMinutes(2));server.Dispose();});
-        MessageBox.Show($"APK ofrecido a {sent} tablet(s). Mantén Aula Móvil abierto durante la descarga.\n\nSHA-256: {sha}","Aula Móvil");
+
+        if(away.Count>0){
+            if(remote==null||!remote.Enabled)MessageBox.Show($"{away.Count} tablet(s) están fuera de LAN y no hay Relay HTTPS configurado.","Aula Móvil");
+            else{
+                var upload=await remote.UploadFileAsync(dlg.FileName);
+                if(!upload.Item1)MessageBox.Show("No se pudo subir el APK al Relay: "+upload.Item2,"Aula Móvil");
+                else foreach(var d in away){
+                    string payload=JsonSerializer.Serialize(new{url=upload.Item3,sha256=upload.Item2});
+                    var rr=await remote.SendCommandAsync(d.Id,"INSTALL_APK",payload);if(rr.Item1)sent++;else footer.Text=$"{d.Name}: {rr.Item2}";
+                }
+            }
+        }
+        if(lanServer!=null)_=Task.Run(async()=>{await Task.Delay(TimeSpan.FromMinutes(3));lanServer.Dispose();});
+        MessageBox.Show($"Instalación enviada a {sent} tablet(s).\n\nSHA-256: {sha}\nLa instalación sólo se ejecuta en el usuario Device Owner.","Aula Móvil");
     }
 
     async Task SetFps()
