@@ -69,8 +69,8 @@ final class Managed {
      */
     static void applyBootOwner(Context c){
         if(!owner(c))return;
-        // Google Play is unavailable by default on the institutional owner.
-        PlayStoreGuard.lock(c);
+        // Aula Móvil 10.1: the institutional owner/admin must always retain Google Play.
+        PlayStoreGuard.unlock(c);
         homeGuardOn(c);
         try{
             DevicePolicyManager d=dpm(c);ComponentName a=admin(c);String self=c.getPackageName();
@@ -93,6 +93,7 @@ final class Managed {
         homeGuardOn(c);
         if(Core.adminMode(c))return;
         applyBootOwner(c);
+        PlayStoreGuard.unlock(c);
         try{
             DevicePolicyManager d=dpm(c);ComponentName a=admin(c);String self=c.getPackageName();
             d.setAffiliationIds(a,Collections.singleton(SessionUsers.AFFILIATION));
@@ -103,8 +104,11 @@ final class Managed {
 
     static void applyGuest(Context c){
         if(!profileOwner(c))return;
-        // Temporary student/teacher users never get direct Play Store access.
-        PlayStoreGuard.lock(c);
+        // Role-specific Google Play policy. It is never hidden.
+        // Student: suspended only inside this ephemeral user.
+        // Teacher: visible and usable.
+        if(Core.ROLE_STUDENT.equals(Core.role(c))) PlayStoreGuard.lock(c);
+        else PlayStoreGuard.unlock(c);
         try{
             DevicePolicyManager d=dpm(c);ComponentName a=admin(c);String self=c.getPackageName();
             // Never act as HOME inside a student/teacher session.
@@ -113,6 +117,7 @@ final class Managed {
             d.setUninstallBlocked(a,self,true);
             try{d.setLockTaskPackages(a,new String[]{self});}catch(Exception ignored){}
             restriction(d,a,UserManager.DISALLOW_UNINSTALL_APPS,true);
+            restriction(d,a,UserManager.DISALLOW_INSTALL_APPS,Core.ROLE_STUDENT.equals(Core.role(c)));
             restriction(d,a,UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES,true);
             restriction(d,a,UserManager.DISALLOW_DEBUGGING_FEATURES,true);
             restriction(d,a,UserManager.DISALLOW_ADD_USER,true);
@@ -142,8 +147,8 @@ final class Managed {
 
     static void adminUnlock(Context c){
         if(!owner(c))return;
-        // Maintenance mode does not automatically unlock Google Play.
-        PlayStoreGuard.lock(c);
+        // Administrator maintenance always has Google Play available.
+        PlayStoreGuard.unlock(c);
         try{
             DevicePolicyManager d=dpm(c);ComponentName a=admin(c);
             // Keep the access guard installed. A reboot always returns to it.
