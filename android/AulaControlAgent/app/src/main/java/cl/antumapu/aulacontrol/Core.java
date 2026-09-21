@@ -17,6 +17,7 @@ import javax.crypto.spec.*;
 final class Core {
     static final String P="aulacontrol";
     static final String ROLE_STUDENT="student", ROLE_TEACHER="teacher", ROLE_ADMIN="admin";
+    static final double[] ALLOWED_FPS={0.5,1,2,4,6};
     static final String K_ROLE="role", K_NAME="name", K_COURSE="course", K_DEVICE_NAME="deviceName",
             K_DEVICE_ID="deviceId", K_KEY="key", K_ADMIN_SALT="adminSalt", K_ADMIN_HASH="adminHash",
             K_AFFILIATION="affiliation";
@@ -133,6 +134,10 @@ final class Core {
     static void touch(Context c){sp(c).edit().putLong("last",System.currentTimeMillis()).apply();}
     static long last(Context c){return sp(c).getLong("last",System.currentTimeMillis());}
     static long idleLimit(Context c){return ROLE_TEACHER.equals(role(c))?30*60*1000L:10*60*1000L;}
+    static double fps(Context c){double v=Double.longBitsToDouble(sp(c).getLong("screen_fps_bits",Double.doubleToRawLongBits(2.0)));return allowedFps(v)?v:2.0;}
+    static boolean allowedFps(double v){for(double x:ALLOWED_FPS)if(Math.abs(x-v)<0.01)return true;return false;}
+    static boolean fps(Context c,double v){if(!allowedFps(v))return false;sp(c).edit().putLong("screen_fps_bits",Double.doubleToRawLongBits(v)).apply();return true;}
+    static long frameIntervalMs(Context c){return Math.max(160L,Math.round(1000.0/fps(c)));}
     static String roleLabel(Context c){return ROLE_TEACHER.equals(role(c))?"Profesor":ROLE_STUDENT.equals(role(c))?"Estudiante":"";}
     static void adminMode(Context c,boolean v){sp(c).edit().putBoolean("admin_mode",v).apply();}
 
