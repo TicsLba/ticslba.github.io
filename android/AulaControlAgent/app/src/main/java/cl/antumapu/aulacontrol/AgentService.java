@@ -131,6 +131,7 @@ public class AgentService extends Service {
         case"RING_ON":ui.post(()->RingController.on(this));return null;
         case"RING_OFF":ui.post(RingController::off);return null;
         case"INSTALL_APK":if(!Managed.owner(this))return"owner-required";Installer.installAsync(this,v);return null;
+        case"DOWNLOAD_FILE":FileTransfer.downloadAsync(this,v);return null;
         case"UNINSTALL_PACKAGE":if(!Managed.owner(this))return"owner-required";PackageOps.uninstallAsync(this,v);return null;
         case"SET_ADMIN_PASSWORD":return Core.setAdminPassword(this,v)?null:"owner-or-password";
         case"SET_APP_POLICY":return Managed.owner(this)&&AppPolicy.saveOwnerPolicy(this,v)?null:"owner-or-policy";
