@@ -164,7 +164,7 @@ public class MainWindow : Window
         words.Children.Add(new TextBlock{Text="Aula · dispositivos · responsables · informes · recuperación",Foreground=new SolidColorBrush(Color.FromRgb(201,213,238)),FontSize=13});
         left.Children.Add(words);hg.Children.Add(left);
         var right=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};
-        right.Children.Add(new Border{Background=Blue,CornerRadius=new CornerRadius(12),Padding=new Thickness(12,7,12,7),Margin=new Thickness(0,0,9,0),Child=new TextBlock{Text="2.1 · Gestión",Foreground=Brushes.White,FontWeight=FontWeights.SemiBold}});
+        right.Children.Add(new Border{Background=Blue,CornerRadius=new CornerRadius(12),Padding=new Thickness(12,7,12,7),Margin=new Thickness(0,0,9,0),Child=new TextBlock{Text="10.1 · Gestión",Foreground=Brushes.White,FontWeight=FontWeights.SemiBold}});
         right.Children.Add(Action("Configuración",(_,_)=>ConfigDialog(),Gold,Navy));Grid.SetColumn(right,1);hg.Children.Add(right);head.Child=hg;root.Children.Add(head);
 
         var stats=new Grid{Margin=new Thickness(18,7,18,3)};for(int i=0;i<5;i++)stats.ColumnDefinitions.Add(new ColumnDefinition());
@@ -180,6 +180,7 @@ public class MainWindow : Window
         bar.Children.Add(Action("Mensaje",async(_,_)=>await PromptSend("MESSAGE","Enviar mensaje")));
         bar.Children.Add(Action("Abrir enlace",async(_,_)=>await PromptSend("OPEN_URL","Abrir enlace")));
         bar.Children.Add(Action("Abrir app",async(_,_)=>await PromptSend("LAUNCH_APP","Abrir aplicación")));
+        bar.Children.Add(Action("Refresco",async(_,_)=>await SetFps(),SoftTeal,Navy));
         bar.Children.Add(Action("Atención",async(_,_)=>await PromptSend("ATTENTION_ON","Modo atención"),Navy));
         bar.Children.Add(Action("Liberar atención",async(_,_)=>await SendSelected("ATTENTION_OFF"),Teal));
         bar.Children.Add(Action("Cerrar sesión",async(_,_)=>await SendSelected("FORCE_LOGOUT"),Red));
@@ -240,6 +241,8 @@ public class MainWindow : Window
         bar.Children.Add(Action("Solicitar ubicación",async(_,_)=>await RecoveryAction("REQUEST_LOCATION")));
         bar.Children.Add(Action("Ver en mapa",(_,_)=>OpenMap(),SoftBlue,Navy));
         bar.Children.Add(Action("Bloquear ahora",async(_,_)=>await RecoveryAction("LOCK_NOW"),Navy));
+        bar.Children.Add(Action("Hacer sonar",async(_,_)=>await RecoveryAction("RING_ON"),SoftGold,Navy));
+        bar.Children.Add(Action("Detener sonido",async(_,_)=>await RecoveryAction("RING_OFF")));
         bar.Children.Add(Action("Activar modo pérdida",async(_,_)=>await EnableLostMode(),Red));
         bar.Children.Add(Action("Marcar recuperada",async(_,_)=>await RecoveryAction("LOST_MODE_OFF"),Teal));
         Grid.SetRow(bar,2);root.Children.Add(bar);return root;
@@ -415,6 +418,16 @@ public class MainWindow : Window
     {
         string help=action=="MESSAGE"?"Mensaje breve que verá el usuario":action=="OPEN_URL"?"URL completa (https://...)":action=="LAUNCH_APP"?"Nombre de paquete Android, por ejemplo com.google.android.youtube":"Mensaje que ocupará la pantalla durante Atención";var x=Ask(title,help,false);if(!string.IsNullOrWhiteSpace(x))await SendSelected(action,x);
     }
+    async Task SetFps()
+    {
+        var x=Ask("Frecuencia de pantalla","Elige 0.5, 1, 2, 4 o 6 FPS. Usa 1–2 FPS para mosaicos grandes y 4–6 FPS para una tablet individual.",false,"2");
+        if(string.IsNullOrWhiteSpace(x))return;
+        if(!double.TryParse(x.Replace(',', '.'),System.Globalization.NumberStyles.Float,System.Globalization.CultureInfo.InvariantCulture,out var fps)
+           || !(Math.Abs(fps-.5)<.01||Math.Abs(fps-1)<.01||Math.Abs(fps-2)<.01||Math.Abs(fps-4)<.01||Math.Abs(fps-6)<.01))
+        {MessageBox.Show("Valores permitidos: 0.5, 1, 2, 4 o 6 FPS.","Aula Móvil");return;}
+        await SendSelected("SET_FPS",fps.ToString(System.Globalization.CultureInfo.InvariantCulture));
+    }
+
     async Task PushRelayToSelected()
     {
         if(!relaySettings.Enabled){MessageBox.Show("Primero configura una URL HTTPS de Relay desde Configuración.","Aula Móvil");return;}
