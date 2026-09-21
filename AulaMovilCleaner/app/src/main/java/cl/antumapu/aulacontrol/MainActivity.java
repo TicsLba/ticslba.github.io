@@ -30,13 +30,13 @@ public class MainActivity extends Activity {
         root.setGravity(Gravity.CENTER_HORIZONTAL);
 
         TextView title = new TextView(this);
-        title.setText("Aula Móvil · Limpiador");
+        title.setText("Aula Móvil · Limpiador 9 → 10.1");
         title.setTextSize(26);
         title.setTextColor(Color.BLACK);
         root.addView(title,new LinearLayout.LayoutParams(-1,-2));
 
         TextView info = new TextView(this);
-        info.setText("\nEste APK es temporal. Limpia políticas heredadas de Aula Móvil 7.0 y libera Device Owner para poder desinstalar la versión anterior.\n\nNo borra aplicaciones, archivos ni Wi‑Fi de la tablet.");
+        info.setText("\nEste APK es temporal. Limpia políticas heredadas de Aula Móvil 9.0 y libera Device Owner para poder desinstalar la versión 9.0.\n\nNo borra aplicaciones, archivos ni Wi‑Fi de la tablet.");
         info.setTextSize(17);
         info.setTextColor(Color.DKGRAY);
         root.addView(info,new LinearLayout.LayoutParams(-1,-2));
