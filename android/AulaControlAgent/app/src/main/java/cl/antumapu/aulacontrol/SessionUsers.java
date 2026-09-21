@@ -27,6 +27,8 @@ final class SessionUsers {
             ex.putString(Core.K_DEVICE_ID,Core.id(c));
             ex.putString(Core.K_KEY,Core.key(c));
             ex.putString(Core.K_AFFILIATION,AFFILIATION);
+            ex.putInt(Core.K_IDLE_STUDENT,Core.idleMinutes(c,Core.ROLE_STUDENT));
+            ex.putInt(Core.K_IDLE_TEACHER,Core.idleMinutes(c,Core.ROLE_TEACHER));
             ex.putString(RelayPrefs.EXTRA,RelayPrefs.url(c));
 
             int flags=DevicePolicyManager.SKIP_SETUP_WIZARD|DevicePolicyManager.LEAVE_ALL_SYSTEM_APPS_ENABLED;
