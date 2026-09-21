@@ -163,11 +163,11 @@ public class MainWindow : Window
         var hg=new Grid();hg.ColumnDefinitions.Add(new ColumnDefinition());hg.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});
         var left=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};left.Children.Add(BrandMark());
         var words=new StackPanel{Margin=new Thickness(15,0,0,0),VerticalAlignment=VerticalAlignment.Center};
-        words.Children.Add(new TextBlock{Text="Aula Móvil 10.1",Foreground=Brushes.White,FontSize=30,FontWeight=FontWeights.Bold});
+        words.Children.Add(new TextBlock{Text="Aula Móvil 11",Foreground=Brushes.White,FontSize=30,FontWeight=FontWeights.Bold});
         words.Children.Add(new TextBlock{Text="Aula · dispositivos · responsables · informes · recuperación",Foreground=new SolidColorBrush(Color.FromRgb(201,213,238)),FontSize=13});
         left.Children.Add(words);hg.Children.Add(left);
         var right=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};
-        right.Children.Add(new Border{Background=Blue,CornerRadius=new CornerRadius(12),Padding=new Thickness(12,7,12,7),Margin=new Thickness(0,0,9,0),Child=new TextBlock{Text="10.1 · Gestión",Foreground=Brushes.White,FontWeight=FontWeights.SemiBold}});
+        right.Children.Add(new Border{Background=Blue,CornerRadius=new CornerRadius(12),Padding=new Thickness(12,7,12,7),Margin=new Thickness(0,0,9,0),Child=new TextBlock{Text="11.0 · Gestión",Foreground=Brushes.White,FontWeight=FontWeights.SemiBold}});
         right.Children.Add(Action("Configuración",(_,_)=>ConfigDialog(),Gold,Navy));Grid.SetColumn(right,1);hg.Children.Add(right);head.Child=hg;root.Children.Add(head);
 
         var stats=new Grid{Margin=new Thickness(18,7,18,3)};for(int i=0;i<5;i++)stats.ColumnDefinitions.Add(new ColumnDefinition());
@@ -183,8 +183,14 @@ public class MainWindow : Window
         bar.Children.Add(Action("Mensaje",async(_,_)=>await PromptSend("MESSAGE","Enviar mensaje")));
         bar.Children.Add(Action("Abrir enlace",async(_,_)=>await PromptSend("OPEN_URL","Abrir enlace")));
         bar.Children.Add(Action("Abrir app",async(_,_)=>await PromptSend("LAUNCH_APP","Abrir aplicación")));
+        bar.Children.Add(Action("Solicitar supervisión",async(_,_)=>await SendSelected("REQUEST_SCREEN"),SoftTeal,Navy));
         bar.Children.Add(Action("Refresco",async(_,_)=>await SetFps(),SoftTeal,Navy));
+        bar.Children.Add(Action("Inactividad",async(_,_)=>await SetIdleSelected(),SoftBlue,Navy));
+        bar.Children.Add(Action("Volumen",async(_,_)=>await SetVolumeSelected(),SoftBlue,Navy));
         bar.Children.Add(Action("Instalar APK",async(_,_)=>await InstallApkSelected(),SoftGold,Navy));
+        bar.Children.Add(Action("Desinstalar app",async(_,_)=>await PromptSend("UNINSTALL_PACKAGE","Desinstalar aplicación")));
+        bar.Children.Add(Action("Bloquear",async(_,_)=>await SendSelected("LOCK_NOW"),Navy));
+        bar.Children.Add(Action("Reiniciar",async(_,_)=>await SendSelected("REBOOT"),Red));
         bar.Children.Add(Action("Atención",async(_,_)=>await PromptSend("ATTENTION_ON","Modo atención"),Navy));
         bar.Children.Add(Action("Liberar atención",async(_,_)=>await SendSelected("ATTENTION_OFF"),Teal));
         bar.Children.Add(Action("Cerrar sesión",async(_,_)=>await SendSelected("FORCE_LOGOUT"),Red));
@@ -205,7 +211,7 @@ public class MainWindow : Window
     {
         var panel=new Grid();
         panel.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});panel.RowDefinitions.Add(new RowDefinition());
-        var intro=new StackPanel{Margin=new Thickness(6,8,6,8)};intro.Children.Add(TitleText("Aula en vivo",22));intro.Children.Add(Hint("Supervisión en tiempo real dentro de la red institucional. Las pantallas no se graban por defecto."));panel.Children.Add(intro);
+        var intro=new StackPanel{Margin=new Thickness(6,8,6,8)};intro.Children.Add(TitleText("Aula en vivo",22));intro.Children.Add(Hint("Supervisión en tiempo real por LAN o Relay HTTPS. Sólo se conserva el último cuadro remoto; no se graban sesiones."));panel.Children.Add(intro);
         var scroll=new ScrollViewer{Content=wall,VerticalScrollBarVisibility=ScrollBarVisibility.Auto};Grid.SetRow(scroll,1);panel.Children.Add(Card(scroll,4));return panel;
     }
 
@@ -311,7 +317,8 @@ public class MainWindow : Window
                     bool local=IsLocal(d);
                     string old=d.User;
                     d.DeviceName=x.DeviceName;d.User=x.User;d.Course=x.Course;d.Role=x.Role;d.Model=x.Model;d.Android=x.Android;d.Battery=x.Battery;d.Managed=x.Managed;
-                    if(!local){d.Screen=false;d.FrameAgeMs=-1;d.Seen=DateTime.Now-x.Seen>TimeSpan.FromMinutes(2)?x.Seen:DateTime.Now;}
+                    d.AppVersion=x.AppVersion;d.Charging=x.Charging;d.Wifi=x.Wifi;d.StorageFreeMb=x.StorageFreeMb;d.StorageTotalMb=x.StorageTotalMb;
+                    if(!local){d.Screen=x.Screen;d.FrameAgeMs=x.Screen?0:-1;d.Seen=x.Seen;}
                     d.Identity();
                     if(old!=d.User)SessionLog.Change(d.Id,old,d.User,d.Course);
                     LiveRecovery.Update(x.DeviceId,x.Lat,x.Lon,x.Accuracy,x.LocationTs,x.Lost);
@@ -326,8 +333,8 @@ public class MainWindow : Window
     void RefreshStats()
     {
         foreach(var d in devices)d.Computed();var on=devices.Where(x=>x.IsOnline).ToList();
-        statOnline.Text=on.Count.ToString();statLive.Text=on.Count(x=>IsLocal(x)&&!string.IsNullOrWhiteSpace(x.User)&&x.Screen).ToString();statStudents.Text=on.Count(x=>x.Role=="student").ToString();statTeachers.Text=on.Count(x=>x.Role=="teacher").ToString();
-        statAlerts.Text=devices.Count(x=>LiveRecovery.Get(x.Id).Lost||(x.IsOnline&&!string.IsNullOrWhiteSpace(x.User)&&IsLocal(x)&&!x.Screen)).ToString();
+        statOnline.Text=on.Count.ToString();statLive.Text=on.Count(x=>!string.IsNullOrWhiteSpace(x.User)&&x.Screen).ToString();statStudents.Text=on.Count(x=>x.Role=="student").ToString();statTeachers.Text=on.Count(x=>x.Role=="teacher").ToString();
+        statAlerts.Text=devices.Count(x=>LiveRecovery.Get(x.Id).Lost||(x.IsOnline&&!string.IsNullOrWhiteSpace(x.User)&&!x.Screen)).ToString();
     }
 
     void SetReportPeriod(int days){reportPeriod=TimeSpan.FromDays(days);reportCaption.Text=$"Últimos {days} días · seguimiento por tablet y responsable";RefreshReports();}
@@ -399,17 +406,24 @@ public class MainWindow : Window
             var badge=new Border{Background=lost?SoftRed:d.Managed?SoftTeal:SoftGold,CornerRadius=new CornerRadius(10),Padding=new Thickness(8,4,8,4),Child=new TextBlock{Text=lost?"PÉRDIDA":IsLocal(d)?"LAN":"REMOTA",Foreground=lost?Red:IsLocal(d)?Teal:Blue,FontSize=11,FontWeight=FontWeights.SemiBold}};Grid.SetColumn(badge,1);h.Children.Add(badge);g.Children.Add(h);
             var ib=new Border{Background=new SolidColorBrush(Color.FromRgb(15,23,42)),CornerRadius=new CornerRadius(10),Margin=new Thickness(8,0,8,0)};var im=new Image{Stretch=Stretch.Uniform};ib.Child=im;Grid.SetRow(ib,1);g.Children.Add(ib);wallImages[d.Id]=im;
             var st=new TextBlock{Foreground=Muted,FontWeight=FontWeights.SemiBold,Margin=new Thickness(12,7,12,7),TextWrapping=TextWrapping.Wrap};st.Text=WallText(d);Grid.SetRow(st,2);g.Children.Add(st);wallStatus[d.Id]=st;
-            var card=Card(g,0);card.Width=326;card.Height=270;card.Margin=new Thickness(7);card.Cursor=System.Windows.Input.Cursors.Hand;card.MouseLeftButtonDown+=(_,_)=>{if(IsLocal(d)&&d.Screen&&!string.IsNullOrWhiteSpace(d.User))new ViewerWindow(d,settings.Key){Owner=this}.Show();};wall.Children.Add(card);
+            var card=Card(g,0);card.Width=326;card.Height=270;card.Margin=new Thickness(7);card.Cursor=System.Windows.Input.Cursors.Hand;card.MouseLeftButtonDown+=(_,_)=>{if(d.Screen&&!string.IsNullOrWhiteSpace(d.User))new ViewerWindow(d,settings.Key,relaySettings.Url){Owner=this}.Show();};wall.Children.Add(card);
         }
         if(devices.Count==0)wall.Children.Add(new TextBlock{Text="Esperando tablets por LAN o relay institucional…",Foreground=Muted,FontSize=18,Margin=new Thickness(25)});
     }
     string WallText(Device d)=>LiveRecovery.Get(d.Id).Lost?$"● MODO PÉRDIDA · {LiveRecovery.Get(d.Id).LocationText}":!d.IsOnline?"○ Sin conexión":!IsLocal(d)?$"● REMOTA · {d.Person}\núltimo reporte por relay":string.IsNullOrWhiteSpace(d.User)?"○ Disponible · esperando identificación":d.Screen?$"● EN VIVO · {d.Person}\n{d.RoleText}{(string.IsNullOrWhiteSpace(d.Course)?"":" · "+d.Course)}":$"● {d.Person} · sesión sin pantalla";
 
-    async Task RefreshWall(){if(wallBusy)return;wallBusy=true;try{var s=WallSignature();if(s!=wallSignature){wallSignature=s;RebuildWall();}await Task.WhenAll(devices.Where(d=>IsLocal(d)&&d.Screen&&!LiveRecovery.Get(d.Id).Lost).Select(FetchFrame));}finally{wallBusy=false;}}
+    async Task RefreshWall(){if(wallBusy)return;wallBusy=true;try{var s=WallSignature();if(s!=wallSignature){wallSignature=s;RebuildWall();}await Task.WhenAll(devices.Where(d=>d.IsOnline&&d.Screen&&!LiveRecovery.Get(d.Id).Lost).Select(FetchFrame));}finally{wallBusy=false;}}
     async Task FetchFrame(Device d)
     {
         if(!wallStatus.TryGetValue(d.Id,out var st)||!wallImages.TryGetValue(d.Id,out var im))return;if(!d.IsOnline){st.Text="○ Sin conexión";im.Source=null;return;}if(string.IsNullOrWhiteSpace(d.User)){st.Text="○ Disponible · esperando identificación";st.Foreground=Blue;im.Source=null;return;}if(!d.Screen){st.Text=$"● {d.Person} · BLOQUEADA: sin supervisión";st.Foreground=Gold;im.Source=null;return;}
-        try{long ts=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();using var q=new HttpRequestMessage(HttpMethod.Get,$"http://{d.Ip}:{d.ScreenPort}/screen.jpg");q.Headers.Add("X-Timestamp",ts.ToString());q.Headers.Add("X-Signature",AcCrypto.Hmac(settings.Key,$"SCREEN\n{ts}"));var r=await http.SendAsync(q);if(!r.IsSuccessStatusCode){st.Text=$"● {d.Person} · esperando cuadro…";st.Foreground=Gold;return;}byte[] z=AcCrypto.Open(settings.Key,await r.Content.ReadAsByteArrayAsync());using var ms=new MemoryStream(z);var bi=new BitmapImage();bi.BeginInit();bi.CacheOption=BitmapCacheOption.OnLoad;bi.DecodePixelWidth=305;bi.StreamSource=ms;bi.EndInit();bi.Freeze();im.Source=bi;st.Text=$"● EN VIVO · {d.Person}\n{d.RoleText}{(string.IsNullOrWhiteSpace(d.Course)?"":" · "+d.Course)}";st.Foreground=Teal;}catch{st.Text=$"● {d.Person} · reconectando…";st.Foreground=Gold;}
+        try{
+            byte[]? z=null;
+            if(IsLocal(d)){
+                long ts=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();using var q=new HttpRequestMessage(HttpMethod.Get,$"http://{d.Ip}:{d.ScreenPort}/screen.jpg");q.Headers.Add("X-Timestamp",ts.ToString());q.Headers.Add("X-Signature",AcCrypto.Hmac(settings.Key,$"SCREEN\n{ts}"));using var resp=await http.SendAsync(q);if(resp.IsSuccessStatusCode)z=AcCrypto.Open(settings.Key,await resp.Content.ReadAsByteArrayAsync());
+            }else if(remote!=null&&remote.Enabled)z=await remote.FetchScreenAsync(d.Id);
+            if(z==null||z.Length==0){st.Text=$"● {d.Person} · esperando cuadro…";st.Foreground=Gold;return;}
+            using var ms=new MemoryStream(z);var bi=new BitmapImage();bi.BeginInit();bi.CacheOption=BitmapCacheOption.OnLoad;bi.DecodePixelWidth=305;bi.StreamSource=ms;bi.EndInit();bi.Freeze();im.Source=bi;st.Text=$"● EN VIVO · {d.Person}\n{d.RoleText}{(string.IsNullOrWhiteSpace(d.Course)?"":" · "+d.Course)}";st.Foreground=Teal;
+        }catch{st.Text=$"● {d.Person} · reconectando…";st.Foreground=Gold;}
     }
 
     List<Device> Selected()=>deviceGrid.SelectedItems.Cast<Device>().ToList();
@@ -420,7 +434,16 @@ public class MainWindow : Window
     }
     async Task PromptSend(string action,string title)
     {
-        string help=action=="MESSAGE"?"Mensaje breve que verá el usuario":action=="OPEN_URL"?"URL completa (https://...)":action=="LAUNCH_APP"?"Nombre de paquete Android, por ejemplo com.google.android.youtube":"Mensaje que ocupará la pantalla durante Atención";var x=Ask(title,help,false);if(!string.IsNullOrWhiteSpace(x))await SendSelected(action,x);
+        string help=action=="MESSAGE"?"Mensaje breve que verá el usuario":action=="OPEN_URL"?"URL completa (https://...)":action=="LAUNCH_APP"?"Nombre de paquete Android, por ejemplo com.google.android.youtube":action=="UNINSTALL_PACKAGE"?"Paquete Android que se eliminará (solo Device Owner)":"Mensaje que ocupará la pantalla durante Atención";var x=Ask(title,help,false);if(!string.IsNullOrWhiteSpace(x))await SendSelected(action,x);
+    }
+
+    async Task SetVolumeSelected(){
+        var x=Ask("Volumen","Porcentaje de volumen multimedia entre 0 y 100.",false,"50");if(!int.TryParse(x,out var v)||v<0||v>100){MessageBox.Show("Usa un número entre 0 y 100.","Aula Móvil");return;}await SendSelected("SET_VOLUME",v.ToString());
+    }
+    async Task SetIdleSelected(){
+        var role=Ask("Inactividad","Escribe student o teacher.",false,"student");if(role!="student"&&role!="teacher"){MessageBox.Show("Usa student o teacher.","Aula Móvil");return;}
+        var x=Ask("Inactividad","Minutos antes del cierre automático (1–180).",false,role=="student"?"10":"30");if(!int.TryParse(x,out var m)||m<1||m>180){MessageBox.Show("Usa entre 1 y 180 minutos.","Aula Móvil");return;}
+        await SendSelected("SET_IDLE",JsonSerializer.Serialize(new{role,minutes=m}));
     }
     async Task InstallApkSelected()
     {
@@ -460,7 +483,7 @@ public class MainWindow : Window
         MessageBox.Show($"Relay configurado en {s.Count} tablet(s). Las futuras sesiones temporales heredarán esta configuración.","Aula Móvil");
     }
     void SelectOnline(){deviceGrid.SelectedItems.Clear();foreach(var d in devices.Where(x=>x.IsOnline))deviceGrid.SelectedItems.Add(d);}
-    void OpenMosaic(){var chosen=Selected().Where(x=>IsLocal(x)&&x.Screen&&!string.IsNullOrWhiteSpace(x.User)).ToList();if(chosen.Count==0)chosen=devices.Where(x=>IsLocal(x)&&x.Screen&&!string.IsNullOrWhiteSpace(x.User)).ToList();if(chosen.Count==0){MessageBox.Show("No hay pantallas LAN supervisadas disponibles.","Aula Móvil");return;}new MosaicWindow(chosen,settings.Key){Owner=this}.Show();}
+    void OpenMosaic(){var chosen=Selected().Where(x=>x.IsOnline&&x.Screen&&!string.IsNullOrWhiteSpace(x.User)).ToList();if(chosen.Count==0)chosen=devices.Where(x=>x.IsOnline&&x.Screen&&!string.IsNullOrWhiteSpace(x.User)).ToList();if(chosen.Count==0){MessageBox.Show("No hay pantallas supervisadas disponibles.","Aula Móvil");return;}new MosaicWindow(chosen,settings.Key,relaySettings.Url){Owner=this}.Show();}
 
     void ConfigDialog()
     {
