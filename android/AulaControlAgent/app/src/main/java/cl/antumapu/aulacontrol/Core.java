@@ -20,7 +20,7 @@ final class Core {
     static final double[] ALLOWED_FPS={0.5,1,2,4,6};
     static final String K_ROLE="role", K_NAME="name", K_COURSE="course", K_DEVICE_NAME="deviceName",
             K_DEVICE_ID="deviceId", K_KEY="key", K_ADMIN_SALT="adminSalt", K_ADMIN_HASH="adminHash",
-            K_AFFILIATION="affiliation";
+            K_AFFILIATION="affiliation", K_IDLE_STUDENT="idleStudent", K_IDLE_TEACHER="idleTeacher";
     private Core(){}
 
     static android.content.SharedPreferences sp(Context c){return c.getSharedPreferences(P,Context.MODE_PRIVATE);}
@@ -102,6 +102,8 @@ final class Core {
                 .putString("role",role)
                 .putString("user_enc",Secrets.encrypt(name))
                 .putString("course_enc",Secrets.encrypt(course))
+                .putInt("idle_student_min",Math.max(1,b.getInt(K_IDLE_STUDENT,10)))
+                .putInt("idle_teacher_min",Math.max(1,b.getInt(K_IDLE_TEACHER,30)))
                 .putLong("last",System.currentTimeMillis())
                 .remove("admin_mode")
                 .apply();
