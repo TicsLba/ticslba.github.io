@@ -1,0 +1,20 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'cl.antumapu.aulacontrol'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'cl.antumapu.aulacontrol'
+        minSdk 26
+        targetSdk 36
+        versionCode 70001
+        versionName '7.0.1-cleaner'
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+}
