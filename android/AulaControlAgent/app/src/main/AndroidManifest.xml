@@ -15,6 +15,7 @@
  <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
  <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
  <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
+ <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
 
  <queries>
   <package android:name="com.android.vending"/>
@@ -81,6 +82,7 @@
   </receiver>
 
   <receiver android:name=".PlayRelockReceiver" android:exported="false"/>
+  <receiver android:name=".InstallResultReceiver" android:exported="false"/>
   <receiver android:name=".BootReceiver" android:exported="false" android:directBootAware="true">
    <intent-filter>
     <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED"/>
