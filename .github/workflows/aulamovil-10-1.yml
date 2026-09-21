@@ -20,7 +20,7 @@ jobs:
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '9.0.0'
+          gradle-version: '9.6.0'
       - name: Prepare institutional logo
         run: |
           mkdir -p android/AulaControlAgent/app/src/main/res/drawable-nodpi
