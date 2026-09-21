@@ -52,7 +52,7 @@ public sealed class TeacherConsoleWindow : Window
 
     public TeacherConsoleWindow()
     {
-        Title = "Tablet Escolar · Consola Docente";
+        Title = "Aula Móvil · Consola Docente";
         Width = 1500;
         Height = 900;
         MinWidth = 1120;
@@ -153,7 +153,7 @@ public sealed class TeacherConsoleWindow : Window
         var mark = new Border { Width = 52, Height = 52, CornerRadius = new CornerRadius(15), Background = Blue, Child = new TextBlock { Text = "TE", Foreground = Brushes.White, FontWeight = FontWeights.Bold, FontSize = 19, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center } };
         left.Children.Add(mark);
         var names = new StackPanel { Margin = new Thickness(14, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
-        names.Children.Add(Txt("Tablet Escolar", 26, Brushes.White, FontWeights.Bold));
+        names.Children.Add(Txt("Aula Móvil", 26, Brushes.White, FontWeights.Bold));
         names.Children.Add(Txt("Consola docente · supervisión y gestión de aula", 13, Brush("#CFD9E6")));
         left.Children.Add(names);
         g.Children.Add(left);
@@ -431,7 +431,7 @@ public sealed class TeacherConsoleWindow : Window
         {
             var empty = new StackPanel { Margin = new Thickness(28) };
             empty.Children.Add(Txt("Sin tablets para mostrar", 22, Ink, FontWeights.Bold));
-            empty.Children.Add(Txt("Verifica que las tablets estén en la misma red, con la misma clave técnica y con Tablet Escolar activo.", 13, Muted));
+            empty.Children.Add(Txt("Verifica que las tablets estén en la misma red, con la misma clave técnica y con Aula Móvil activo.", 13, Muted));
             wall.Children.Add(empty);
         }
     }
@@ -512,7 +512,7 @@ public sealed class TeacherConsoleWindow : Window
         var list = SelectedDevices();
         if (list.Count == 0)
         {
-            MessageBox.Show("Selecciona al menos una tablet.", "Tablet Escolar", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show("Selecciona al menos una tablet.", "Aula Móvil", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
         if (commands == null) return;
@@ -533,7 +533,7 @@ public sealed class TeacherConsoleWindow : Window
         var list = SelectedDevices().Where(x => x.IsOnline && x.Screen && !string.IsNullOrWhiteSpace(x.User)).ToList();
         if (list.Count == 0)
         {
-            MessageBox.Show("Selecciona tablets que tengan una sesión supervisada activa.", "Tablet Escolar", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show("Selecciona tablets que tengan una sesión supervisada activa.", "Aula Móvil", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
         new MosaicWindow(list, settings.Key) { Owner = this }.Show();
