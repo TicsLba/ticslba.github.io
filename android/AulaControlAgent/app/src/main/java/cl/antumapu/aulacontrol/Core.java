@@ -133,13 +133,33 @@ final class Core {
 
     static void touch(Context c){sp(c).edit().putLong("last",System.currentTimeMillis()).apply();}
     static long last(Context c){return sp(c).getLong("last",System.currentTimeMillis());}
-    static long idleLimit(Context c){return ROLE_TEACHER.equals(role(c))?30*60*1000L:10*60*1000L;}
+    static long idleLimit(Context c){
+        int def=ROLE_TEACHER.equals(role(c))?30:10;
+        int min=sp(c).getInt(ROLE_TEACHER.equals(role(c))?"idle_teacher_min":"idle_student_min",def);
+        return Math.max(1,Math.min(180,min))*60_000L;
+    }
+    static boolean idleMinutes(Context c,String role,int minutes){
+        if(minutes<1||minutes>180)return false;
+        String k=ROLE_TEACHER.equals(role)?"idle_teacher_min":ROLE_STUDENT.equals(role)?"idle_student_min":"";
+        if(k.isEmpty())return false;
+        sp(c).edit().putInt(k,minutes).apply();return true;
+    }
+    static int idleMinutes(Context c,String role){
+        int def=ROLE_TEACHER.equals(role)?30:10;
+        return sp(c).getInt(ROLE_TEACHER.equals(role)?"idle_teacher_min":"idle_student_min",def);
+    }
+    static void remoteScreenUntil(Context c,long until){sp(c).edit().putLong("remote_screen_until",until).apply();}
+    static boolean remoteScreenRequested(Context c){return sp(c).getLong("remote_screen_until",0)>System.currentTimeMillis();}
     static double fps(Context c){double v=Double.longBitsToDouble(sp(c).getLong("screen_fps_bits",Double.doubleToRawLongBits(2.0)));return allowedFps(v)?v:2.0;}
     static boolean allowedFps(double v){for(double x:ALLOWED_FPS)if(Math.abs(x-v)<0.01)return true;return false;}
     static boolean fps(Context c,double v){if(!allowedFps(v))return false;sp(c).edit().putLong("screen_fps_bits",Double.doubleToRawLongBits(v)).apply();return true;}
     static long frameIntervalMs(Context c){return Math.max(160L,Math.round(1000.0/fps(c)));}
     static String roleLabel(Context c){return ROLE_TEACHER.equals(role(c))?"Profesor":ROLE_STUDENT.equals(role(c))?"Estudiante":"";}
     static void adminMode(Context c,boolean v){sp(c).edit().putBoolean("admin_mode",v).apply();}
+    static boolean setAdminPassword(Context c,String pw){
+        if(!Managed.owner(c)||pw==null||pw.length()<6)return false;
+        String s=salt();sp(c).edit().putString("salt",s).putString("hash",hash(pw,s)).apply();return true;
+    }
 
     static String salt(){byte[] b=new byte[16];new SecureRandom().nextBytes(b);return Base64.encodeToString(b,Base64.NO_WRAP);}
     static String hash(String pw,String salt){try{var spec=new PBEKeySpec(pw.toCharArray(),Base64.decode(salt,Base64.NO_WRAP),180000,256);byte[] b=SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).getEncoded();return Base64.encodeToString(b,Base64.NO_WRAP);}catch(Exception e){return "";}}
