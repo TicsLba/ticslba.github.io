@@ -15,19 +15,19 @@ namespace PangiConsole;
 
 public class MainWindow : Window
 {
-    static readonly SolidColorBrush Blue = new(Color.FromRgb(49,89,255));
-    static readonly SolidColorBrush Navy = new(Color.FromRgb(23,43,77));
-    static readonly SolidColorBrush Teal = new(Color.FromRgb(32,199,164));
-    static readonly SolidColorBrush Gold = new(Color.FromRgb(245,180,61));
-    static readonly SolidColorBrush Red = new(Color.FromRgb(202,61,71));
-    static readonly SolidColorBrush Ink = new(Color.FromRgb(23,32,51));
-    static readonly SolidColorBrush Muted = new(Color.FromRgb(102,112,133));
-    static readonly SolidColorBrush Canvas = new(Color.FromRgb(244,247,251));
-    static readonly SolidColorBrush Line = new(Color.FromRgb(221,228,239));
-    static readonly SolidColorBrush SoftBlue = new(Color.FromRgb(232,237,255));
-    static readonly SolidColorBrush SoftTeal = new(Color.FromRgb(229,250,245));
-    static readonly SolidColorBrush SoftGold = new(Color.FromRgb(255,247,226));
-    static readonly SolidColorBrush SoftRed = new(Color.FromRgb(255,238,240));
+    static readonly SolidColorBrush Blue = new(Color.FromRgb(24,167,124));
+    static readonly SolidColorBrush Navy = new(Color.FromRgb(17,24,32));
+    static readonly SolidColorBrush Teal = new(Color.FromRgb(90,216,177));
+    static readonly SolidColorBrush Gold = new(Color.FromRgb(242,184,75));
+    static readonly SolidColorBrush Red = new(Color.FromRgb(231,101,101));
+    static readonly SolidColorBrush Ink = new(Color.FromRgb(245,247,247));
+    static readonly SolidColorBrush Muted = new(Color.FromRgb(168,184,185));
+    static readonly SolidColorBrush Canvas = new(Color.FromRgb(17,24,32));
+    static readonly SolidColorBrush Line = new(Color.FromRgb(45,61,68));
+    static readonly SolidColorBrush SoftBlue = new(Color.FromRgb(18,56,68));
+    static readonly SolidColorBrush SoftTeal = new(Color.FromRgb(19,63,54));
+    static readonly SolidColorBrush SoftGold = new(Color.FromRgb(67,56,33));
+    static readonly SolidColorBrush SoftRed = new(Color.FromRgb(74,45,48));
 
     readonly ObservableCollection<Device> devices = new();
     readonly ObservableCollection<DeviceUsageSummary> deviceReports = new();
@@ -96,13 +96,13 @@ public class MainWindow : Window
         RowHeight = 46,
         HeadersVisibility = DataGridHeadersVisibility.Column,
         GridLinesVisibility = DataGridGridLinesVisibility.Horizontal,
-        Background = Brushes.White,
+        Background = new SolidColorBrush(Color.FromRgb(25,35,43)),
         BorderThickness = new Thickness(0)
     };
 
     Border Card(UIElement child,double pad=16) => new()
     {
-        Background = Brushes.White,
+        Background = new SolidColorBrush(Color.FromRgb(25,35,43)),
         CornerRadius = new CornerRadius(18),
         Padding = new Thickness(pad),
         BorderBrush = Line,
@@ -117,7 +117,7 @@ public class MainWindow : Window
             Content = text,
             Padding = new Thickness(14,9,14,9),
             Margin = new Thickness(4),
-            Background = fill ?? Brushes.White,
+            Background = fill ?? new SolidColorBrush(Color.FromRgb(34,45,53)),
             Foreground = foreground ?? (fill == null ? Ink : Brushes.White),
             BorderThickness = new Thickness(fill == null ? 1 : 0),
             BorderBrush = Line,
@@ -163,11 +163,11 @@ public class MainWindow : Window
         var hg=new Grid();hg.ColumnDefinitions.Add(new ColumnDefinition());hg.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});
         var left=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};left.Children.Add(BrandMark());
         var words=new StackPanel{Margin=new Thickness(15,0,0,0),VerticalAlignment=VerticalAlignment.Center};
-        words.Children.Add(new TextBlock{Text="PANGI 11",Foreground=Brushes.White,FontSize=30,FontWeight=FontWeights.Bold});
+        words.Children.Add(new TextBlock{Text="PANGI V20.5",Foreground=Brushes.White,FontSize=30,FontWeight=FontWeights.Bold});
         words.Children.Add(new TextBlock{Text="Aula · dispositivos · responsables · informes · recuperación",Foreground=new SolidColorBrush(Color.FromRgb(201,213,238)),FontSize=13});
         left.Children.Add(words);hg.Children.Add(left);
         var right=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};
-        right.Children.Add(new Border{Background=Blue,CornerRadius=new CornerRadius(12),Padding=new Thickness(12,7,12,7),Margin=new Thickness(0,0,9,0),Child=new TextBlock{Text="20.5 · Gestión",Foreground=Brushes.White,FontWeight=FontWeights.SemiBold}});
+        right.Children.Add(new Border{Background=Blue,CornerRadius=new CornerRadius(12),Padding=new Thickness(12,7,12,7),Margin=new Thickness(0,0,9,0),Child=new TextBlock{Text="V20.5 · Observa · Protege · Responde",Foreground=Brushes.White,FontWeight=FontWeights.SemiBold}});
         right.Children.Add(Action("Configuración",(_,_)=>ConfigDialog(),Gold,Navy));Grid.SetColumn(right,1);hg.Children.Add(right);head.Child=hg;root.Children.Add(head);
 
         var stats=new Grid{Margin=new Thickness(18,7,18,3)};for(int i=0;i<5;i++)stats.ColumnDefinitions.Add(new ColumnDefinition());
