@@ -1,9 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="primary">#3159FF</color>
-    <color name="primary_dark">#172B4D</color>
-    <color name="accent">#20C7A4</color>
-    <color name="surface">#F4F7FB</color>
-    <color name="ink">#172033</color>
-    <color name="muted">#667085</color>
-    <color name="icon_background">#3159FF</color>
+ <color name="primary">#123844</color>
+ <color name="primary_dark">#111820</color>
+ <color name="accent">#18A77C</color>
+ <color name="pangi_green_soft">#5AD8B1</color>
+ <color name="pangi_amber">#F2B84B</color>
+ <color name="pangi_coral">#E76565</color>
+ <color name="pangi_ivory">#F5F7F7</color>
 </resources>
