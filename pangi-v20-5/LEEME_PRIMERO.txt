@@ -1,0 +1,19 @@
+PANGI V20.5
+==============
+Gestión inteligente de dispositivos educativos
+Observa · Protege · Responde
+
+COMPONENTES
+- Android: PANGI Agent
+- Windows: PANGI Console
+- Servidor: PANGI Relay
+- Setup: scripts PowerShell
+
+IMPORTANTE
+1. Prueba primero en una tablet piloto.
+2. El APK debe estar firmado antes de instalar.
+3. Device Owner requiere una tablet sin cuentas configuradas.
+4. Las sesiones compartidas seguras requieren Android 9 / API 28 o superior.
+5. No despliegues masivamente hasta validar launcher, teclado, sesión, reinicio y supervisión en hardware real.
+
+PANGI no implementa keylogging ni captura contraseñas personales.
