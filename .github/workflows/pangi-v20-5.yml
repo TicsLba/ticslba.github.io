@@ -1,0 +1,80 @@
+name: PANGI V20.5
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - pangi-v20-5
+    paths:
+      - 'pangi-v20-5/**'
+      - '.github/workflows/pangi-v20-5.yml'
+
+jobs:
+  android:
+    name: Android Agent
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Build Android release
+        working-directory: pangi-v20-5/android/PangiAgent
+        run: gradle --no-daemon :app:assembleRelease --stacktrace
+      - name: Validate PANGI contract
+        run: |
+          grep -q "applicationId 'cl.antumapu.pangi.v205'" pangi-v20-5/android/PangiAgent/app/build.gradle
+          grep -q "versionName '20.5.0'" pangi-v20-5/android/PangiAgent/app/build.gradle
+          grep -q "bindDeviceAdminServiceAsUser" pangi-v20-5/android/PangiAgent/app/src/main/java/cl/antumapu/pangi/v205/SessionUsers.java
+          grep -q "ImeGuard.ensure" pangi-v20-5/android/PangiAgent/app/src/main/java/cl/antumapu/pangi/v205/PangiReadyService.java
+          grep -q "REQUEST_SCREEN" pangi-v20-5/android/PangiAgent/app/src/main/java/cl/antumapu/pangi/v205/AgentService.java
+          grep -q "REMOTE_SCREEN_ON" pangi-v20-5/android/PangiAgent/app/src/main/java/cl/antumapu/pangi/v205/AgentService.java
+          grep -q "BORRAR TABLET" pangi-v20-5/android/PangiAgent/app/src/main/java/cl/antumapu/pangi/v205/MainActivity.java
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PANGI-V20.5-Android-unsigned
+          path: pangi-v20-5/android/PangiAgent/app/build/outputs/apk/release/app-release-unsigned.apk
+          if-no-files-found: error
+
+  windows:
+    name: Windows Console
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Publish Console
+        shell: pwsh
+        run: dotnet publish pangi-v20-5/windows/PangiConsole/PangiConsole.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o pangi-console-publish
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PANGI-V20.5-Console-Windows-x64
+          path: pangi-console-publish/
+          if-no-files-found: error
+
+  relay-windows:
+    name: Windows Relay
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Publish Relay
+        shell: pwsh
+        run: dotnet publish pangi-v20-5/server/PangiRelay/PangiRelay.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o pangi-relay-publish
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PANGI-V20.5-Relay-Windows-x64
+          path: pangi-relay-publish/
+          if-no-files-found: error
