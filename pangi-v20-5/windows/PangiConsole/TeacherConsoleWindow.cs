@@ -11,20 +11,20 @@ namespace PangiConsole;
 
 public sealed class TeacherConsoleWindow : Window
 {
-    static readonly SolidColorBrush Navy = Brush("#16324F");
-    static readonly SolidColorBrush Navy2 = Brush("#24445F");
-    static readonly SolidColorBrush Blue = Brush("#3568F2");
-    static readonly SolidColorBrush Teal = Brush("#24A78E");
-    static readonly SolidColorBrush Amber = Brush("#E7A43A");
-    static readonly SolidColorBrush Red = Brush("#D9535F");
-    static readonly SolidColorBrush Ink = Brush("#172033");
-    static readonly SolidColorBrush Muted = Brush("#667085");
-    static readonly SolidColorBrush Surface = Brushes.White;
-    static readonly SolidColorBrush CanvasBrush = Brush("#F4F7FB");
-    static readonly SolidColorBrush Line = Brush("#DFE6EF");
-    static readonly SolidColorBrush SoftBlue = Brush("#EEF3FF");
-    static readonly SolidColorBrush SoftTeal = Brush("#EAF8F5");
-    static readonly SolidColorBrush SoftAmber = Brush("#FFF6E7");
+    static readonly SolidColorBrush Navy = Brush("#111820");
+    static readonly SolidColorBrush Navy2 = Brush("#123844");
+    static readonly SolidColorBrush Blue = Brush("#18A77C");
+    static readonly SolidColorBrush Teal = Brush("#5AD8B1");
+    static readonly SolidColorBrush Amber = Brush("#F2B84B");
+    static readonly SolidColorBrush Red = Brush("#E76565");
+    static readonly SolidColorBrush Ink = Brush("#F5F7F7");
+    static readonly SolidColorBrush Muted = Brush("#A8B8B9");
+    static readonly SolidColorBrush Surface = Brush("#19232B");
+    static readonly SolidColorBrush CanvasBrush = Brush("#111820");
+    static readonly SolidColorBrush Line = Brush("#2D3D44");
+    static readonly SolidColorBrush SoftBlue = Brush("#123844");
+    static readonly SolidColorBrush SoftTeal = Brush("#133F36");
+    static readonly SolidColorBrush SoftAmber = Brush("#433821");
 
     readonly ObservableCollection<Device> devices = new();
     readonly HashSet<string> selected = new();
@@ -38,7 +38,7 @@ public sealed class TeacherConsoleWindow : Window
     readonly TextBlock statStudents = StatValue();
     readonly TextBlock statTeachers = StatValue();
     readonly TextBlock statAlerts = StatValue();
-    readonly TextBox search = new() { MinWidth = 230, FontSize = 14, Padding = new Thickness(12, 9, 12, 9), BorderThickness = new Thickness(1), BorderBrush = Line, Background = Brushes.White };
+    readonly TextBox search = new() { MinWidth = 230, FontSize = 14, Padding = new Thickness(12, 9, 12, 9), BorderThickness = new Thickness(1), BorderBrush = Line, Background = Brush("#19232B") };
     readonly DispatcherTimer timer = new() { Interval = TimeSpan.FromMilliseconds(1300) };
     readonly HttpClient http = new() { Timeout = TimeSpan.FromSeconds(2.5) };
 
@@ -98,7 +98,7 @@ public sealed class TeacherConsoleWindow : Window
             Content = text,
             Padding = compact ? new Thickness(10, 7, 10, 7) : new Thickness(14, 10, 14, 10),
             Margin = new Thickness(4, 0, 4, 0),
-            Background = fill ?? Brushes.White,
+            Background = fill ?? Brush("#222D35"),
             Foreground = fill == null ? Ink : Brushes.White,
             BorderBrush = fill == null ? Line : fill,
             BorderThickness = new Thickness(1),
@@ -135,7 +135,7 @@ public sealed class TeacherConsoleWindow : Window
         Grid.SetRow(workspace, 3);
         root.Children.Add(workspace);
 
-        var foot = new Border { Background = Brush("#EAF0F7"), Padding = new Thickness(18, 10, 18, 10), Child = footer };
+        var foot = new Border { Background = Brush("#16232A"), Padding = new Thickness(18, 10, 18, 10), Child = footer };
         Grid.SetRow(foot, 4);
         root.Children.Add(foot);
 
@@ -150,7 +150,7 @@ public sealed class TeacherConsoleWindow : Window
         g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
         var left = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-        var mark = new Border { Width = 52, Height = 52, CornerRadius = new CornerRadius(15), Background = Blue, Child = new TextBlock { Text = "TE", Foreground = Brushes.White, FontWeight = FontWeights.Bold, FontSize = 19, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center } };
+        var mark = new Border { Width = 52, Height = 52, CornerRadius = new CornerRadius(15), Background = Blue, Child = new TextBlock { Text = "P", Foreground = Brushes.White, FontWeight = FontWeights.Bold, FontSize = 19, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center } };
         left.Children.Add(mark);
         var names = new StackPanel { Margin = new Thickness(14, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
         names.Children.Add(Txt("PANGI", 26, Brushes.White, FontWeights.Bold));
@@ -159,7 +159,7 @@ public sealed class TeacherConsoleWindow : Window
         g.Children.Add(left);
 
         var right = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-        right.Children.Add(new Border { Background = Navy2, CornerRadius = new CornerRadius(12), Padding = new Thickness(11, 7, 11, 7), Margin = new Thickness(0, 0, 8, 0), Child = Txt("2.0 · Aula administrada", 12, Brushes.White, FontWeights.SemiBold) });
+        right.Children.Add(new Border { Background = Navy2, CornerRadius = new CornerRadius(12), Padding = new Thickness(11, 7, 11, 7), Margin = new Thickness(0, 0, 8, 0), Child = Txt("V20.5 · Aula administrada", 12, Brushes.White, FontWeights.SemiBold) });
         right.Children.Add(ActionButton("Configuración", (_, _) => ConfigDialog(), Amber, true));
         Grid.SetColumn(right, 1);
         g.Children.Add(right);
