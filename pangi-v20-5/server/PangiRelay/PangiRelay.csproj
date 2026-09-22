@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>PANGI-Relay</AssemblyName>
+    <Version>20.5.0</Version>
+    <Product>PANGI V20.5 Relay</Product>
+  </PropertyGroup>
+</Project>
