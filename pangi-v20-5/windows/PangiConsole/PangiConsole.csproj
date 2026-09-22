@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>PANGI-Console</AssemblyName>
+    <RootNamespace>PangiConsole</RootNamespace>
+    <Version>20.5.0</Version>
+    <AssemblyVersion>20.5.0.0</AssemblyVersion>
+    <FileVersion>20.5.0.0</FileVersion>
+    <Product>PANGI V20.5</Product>
+    <Company>Desarrollador Eduardo Pérez González</Company>
+    <Authors>Eduardo Pérez González</Authors>
+    <Copyright>© 2026 Eduardo Pérez González</Copyright>
+    <Description>PANGI V20.5 Console para gestión, supervisión, inventario, despliegue y control de tablets Android institucionales</Description>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />
+  </ItemGroup>
+</Project>
