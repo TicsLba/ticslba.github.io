@@ -1,4 +1,5 @@
 <resources>
-    <string name="app_name">Antumapu Guard Lite</string>
-    <string name="accessibility_description">Protege por PIN Play Store, instalación de APK y secciones administrativas específicas sin bloquear todos los Ajustes.</string>
+    <string name="app_name">Pangi</string>
+    <string name="app_tagline">Protección de acceso</string>
+    <string name="accessibility_description">Pangi protege por PIN Play Store, instalación de APK y áreas administrativas específicas sin bloquear los ajustes cotidianos.</string>
 </resources>
