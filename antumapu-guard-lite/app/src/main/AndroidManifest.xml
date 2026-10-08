@@ -4,8 +4,9 @@
 
     <application
         android:allowBackup="false"
-        android:label="Antumapu Guard Lite"
-        android:icon="@drawable/ic_guard"
+        android:label="@string/app_name"
+        android:icon="@drawable/ic_pangi"
+        android:roundIcon="@drawable/ic_pangi"
         android:theme="@style/AppTheme"
         android:supportsRtl="true">
 
