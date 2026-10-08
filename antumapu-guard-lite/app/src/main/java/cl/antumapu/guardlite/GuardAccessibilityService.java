@@ -67,7 +67,7 @@ public class GuardAccessibilityService extends AccessibilityService {
         if (!settingsPkg) return null;
 
         if (Prefs.protectInstall(this) &&
-                (containsAny(c, "manageexternalsources", "unknownsources", "externalapp", "specialappaccess"))) {
+                containsAny(c, "manageexternalsources", "unknownsources", "externalapp", "specialappaccess")) {
             return "Instalar aplicaciones desconocidas";
         }
 
@@ -87,11 +87,41 @@ public class GuardAccessibilityService extends AccessibilityService {
             return "Opciones de desarrollador";
         }
 
-        // Samsung Oreo sometimes uses generic SubSettings classes.
-        // Only inspect the first visible labels when the current activity is a sub-screen,
-        // never on the main Settings dashboard.
+        AccessibilityNodeInfo root = getRootInActiveWindow();
+
+        // Samsung Experience / Android 8.1 tablets use a two-pane Settings UI.
+        // Many sections keep the generic com.android.settings/.Settings activity,
+        // so the right-pane toolbar is the reliable source of the currently open section.
+        if (root != null) {
+            List<String> rightPane = textsFromViewId(root,
+                    "com.android.settings:id/right_pane_toolbar", 8);
+
+            if (Prefs.protectInstall(this) && titleMatches(rightPane,
+                    "instalar apps desconocidas", "instalar aplicaciones desconocidas",
+                    "fuentes desconocidas", "install unknown apps", "unknown sources")) {
+                return "Instalar aplicaciones desconocidas";
+            }
+
+            if (Prefs.protectApps(this) && titleMatches(rightPane,
+                    "aplicaciones", "apps", "administrador de aplicaciones",
+                    "informacion de la aplicacion", "app info", "application manager")) {
+                return "Aplicaciones y desinstalación";
+            }
+
+            if (Prefs.protectAccessibility(this) && titleMatches(rightPane,
+                    "accesibilidad", "accessibility")) {
+                return "Accesibilidad";
+            }
+
+            if (Prefs.protectDeveloper(this) && titleMatches(rightPane,
+                    "opciones de desarrollador", "developer options")) {
+                return "Opciones de desarrollador";
+            }
+        }
+
+        // Fallback for phones and Settings variants that expose a dedicated sub-screen activity.
         if (c.contains("subsettings") || c.contains("dashboard")) {
-            List<String> top = firstTexts(getRootInActiveWindow(), 10);
+            List<String> top = firstTexts(root, 10);
 
             if (Prefs.protectInstall(this) && titleMatches(top,
                     "instalar apps desconocidas", "instalar aplicaciones desconocidas",
@@ -119,8 +149,24 @@ public class GuardAccessibilityService extends AccessibilityService {
         return null;
     }
 
+    private List<String> textsFromViewId(AccessibilityNodeInfo root, String viewId, int max) {
+        ArrayList<String> out = new ArrayList<>();
+        if (root == null) return out;
+
+        try {
+            List<AccessibilityNodeInfo> nodes = root.findAccessibilityNodeInfosByViewId(viewId);
+            if (nodes == null) return out;
+            for (AccessibilityNodeInfo node : nodes) {
+                collect(node, out, max);
+                if (out.size() >= max) break;
+            }
+        } catch (Exception ignored) {
+        }
+        return out;
+    }
+
     private boolean titleMatches(List<String> texts, String... terms) {
-        int n = Math.min(6, texts.size());
+        int n = Math.min(8, texts.size());
         for (int i = 0; i < n; i++) {
             String t = norm(texts.get(i));
             for (String term : terms) {
