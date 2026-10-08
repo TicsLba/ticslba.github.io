@@ -1,4 +1,4 @@
-name: Build Antumapu Guard Lite
+name: Build Pangi
 
 on:
   push:
@@ -57,11 +57,11 @@ jobs:
           sha256sum antumapu-guard-lite/app/build/outputs/apk/debug/app-debug.apk
 
       - name: Rename APK
-        run: cp antumapu-guard-lite/app/build/outputs/apk/debug/app-debug.apk AntumapuGuard-Lite-1.1.apk
+        run: cp antumapu-guard-lite/app/build/outputs/apk/debug/app-debug.apk Pangi-1.2.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: AntumapuGuard-Lite-1.1-APK
-          path: AntumapuGuard-Lite-1.1.apk
+          name: Pangi-1.2-APK
+          path: Pangi-1.2.apk
           retention-days: 7
