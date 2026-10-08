@@ -3,7 +3,6 @@ package cl.antumapu.guardlite;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ComponentName;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -13,9 +12,9 @@ import android.provider.Settings;
 import android.text.InputType;
 import android.text.TextUtils;
 import android.view.Gravity;
-import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.Switch;
@@ -23,10 +22,18 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 public class MainActivity extends Activity {
+    private static final int GREEN = Color.rgb(14, 47, 32);
+    private static final int GREEN_2 = Color.rgb(25, 96, 61);
+    private static final int ORANGE = Color.rgb(229, 138, 43);
+    private static final int BG = Color.rgb(244, 247, 245);
+    private static final int TEXT = Color.rgb(28, 51, 37);
+    private static final int MUTED = Color.rgb(93, 108, 98);
+
+    private boolean adminAuthenticated = false;
     private TextView protectionStatus;
     private TextView serviceStatus;
     private TextView timeoutStatus;
-    private boolean authDialogShowing = false;
+    private Button maintenanceButton;
 
     private int dp(int n) {
         return (int)(n * getResources().getDisplayMetrics().density + 0.5f);
@@ -34,24 +41,30 @@ public class MainActivity extends Activity {
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
-        buildUi();
 
         if (!Prefs.hasPin(this)) {
+            buildWelcome();
             showPinSetup(true);
-        } else if (!Prefs.isUnlocked(this)) {
-            showAdminLogin();
+        } else {
+            buildAdminGate();
         }
     }
 
     @Override protected void onResume() {
         super.onResume();
-        refreshStatus();
+        if (adminAuthenticated) refreshStatus();
     }
 
     private GradientDrawable round(int color, int radius) {
         GradientDrawable g = new GradientDrawable();
         g.setColor(color);
         g.setCornerRadius(dp(radius));
+        return g;
+    }
+
+    private GradientDrawable outline(int fill, int stroke, int radius) {
+        GradientDrawable g = round(fill, radius);
+        g.setStroke(dp(1), stroke);
         return g;
     }
 
@@ -64,44 +77,175 @@ public class MainActivity extends Activity {
         return t;
     }
 
+    private ImageView logo(int sizeDp) {
+        ImageView i = new ImageView(this);
+        i.setImageResource(R.drawable.ic_pangi);
+        i.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        i.setContentDescription("Pangi");
+        i.setLayoutParams(new LinearLayout.LayoutParams(dp(sizeDp), dp(sizeDp)));
+        return i;
+    }
+
+    private void buildWelcome() {
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setGravity(Gravity.CENTER);
+        root.setPadding(dp(34), dp(36), dp(34), dp(36));
+        root.setBackgroundColor(GREEN);
+
+        root.addView(logo(104));
+
+        TextView title = text("Pangi", 38, Color.WHITE, true);
+        title.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(-1, -2);
+        tp.setMargins(0, dp(18), 0, dp(5));
+        root.addView(title, tp);
+
+        TextView sub = text("Protección de acceso", 17, Color.rgb(214, 228, 219), false);
+        sub.setGravity(Gravity.CENTER);
+        root.addView(sub);
+
+        TextView note = text(
+                "Configura un PIN administrativo para comenzar.",
+                14, Color.rgb(170, 194, 179), false);
+        note.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams np = new LinearLayout.LayoutParams(-1, -2);
+        np.setMargins(0, dp(22), 0, 0);
+        root.addView(note, np);
+
+        setContentView(root);
+    }
+
+    private void buildAdminGate() {
+        adminAuthenticated = false;
+
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setGravity(Gravity.CENTER);
+        root.setPadding(dp(34), dp(34), dp(34), dp(34));
+        root.setBackgroundColor(GREEN);
+
+        root.addView(logo(96));
+
+        TextView brand = text("PANGI", 13, ORANGE, true);
+        brand.setLetterSpacing(0.16f);
+        brand.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(-1, -2);
+        bp.setMargins(0, dp(16), 0, dp(8));
+        root.addView(brand, bp);
+
+        TextView title = text("Administración protegida", 27, Color.WHITE, true);
+        title.setGravity(Gravity.CENTER);
+        root.addView(title);
+
+        TextView subtitle = text(
+                "Ingresa tu PIN para administrar la protección del dispositivo.",
+                14, Color.rgb(197, 216, 204), false);
+        subtitle.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(-1, -2);
+        sp.setMargins(dp(6), dp(9), dp(6), dp(24));
+        root.addView(subtitle, sp);
+
+        final EditText pin = new EditText(this);
+        pin.setHint("PIN administrativo");
+        pin.setSingleLine(true);
+        pin.setGravity(Gravity.CENTER);
+        pin.setTextSize(19);
+        pin.setTextColor(TEXT);
+        pin.setHintTextColor(Color.rgb(127, 139, 131));
+        pin.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_VARIATION_PASSWORD);
+        pin.setBackground(round(Color.WHITE, 15));
+        pin.setPadding(dp(16), dp(14), dp(16), dp(14));
+        root.addView(pin, new LinearLayout.LayoutParams(-1, dp(58)));
+
+        Button enter = new Button(this);
+        enter.setText("INGRESAR");
+        enter.setTextSize(14);
+        enter.setTextColor(Color.WHITE);
+        enter.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        enter.setBackground(round(ORANGE, 15));
+        enter.setOnClickListener(v -> {
+            String value = pin.getText() == null ? "" : pin.getText().toString();
+            if (Prefs.checkPin(this, value)) {
+                adminAuthenticated = true;
+                buildDashboard();
+            } else {
+                pin.setText("");
+                Toast.makeText(this, "PIN incorrecto", Toast.LENGTH_SHORT).show();
+            }
+        });
+        LinearLayout.LayoutParams ep = new LinearLayout.LayoutParams(-1, dp(56));
+        ep.setMargins(0, dp(16), 0, 0);
+        root.addView(enter, ep);
+
+        TextView foot = text(
+                "Áreas sensibles protegidas mediante PIN",
+                12, Color.rgb(143, 172, 154), false);
+        foot.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams fp = new LinearLayout.LayoutParams(-1, -2);
+        fp.setMargins(0, dp(20), 0, 0);
+        root.addView(foot, fp);
+
+        setContentView(root);
+        pin.requestFocus();
+    }
+
     private LinearLayout card() {
         LinearLayout c = new LinearLayout(this);
         c.setOrientation(LinearLayout.VERTICAL);
-        c.setPadding(dp(18), dp(17), dp(18), dp(17));
-        c.setBackground(round(Color.WHITE, 16));
+        c.setPadding(dp(19), dp(18), dp(19), dp(18));
+        c.setBackground(round(Color.WHITE, 18));
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2);
         p.setMargins(0, 0, 0, dp(14));
         c.setLayoutParams(p);
         return c;
     }
 
-    private void buildUi() {
+    private TextView sectionLabel(String label) {
+        TextView t = text(label, 11, Color.rgb(91, 108, 97), true);
+        t.setLetterSpacing(0.09f);
+        return t;
+    }
+
+    private void buildDashboard() {
+        if (!adminAuthenticated) {
+            buildAdminGate();
+            return;
+        }
+
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
-        scroll.setBackgroundColor(Color.rgb(243,247,244));
+        scroll.setBackgroundColor(BG);
 
         LinearLayout page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(page);
 
         LinearLayout hero = new LinearLayout(this);
-        hero.setOrientation(LinearLayout.VERTICAL);
-        hero.setPadding(dp(24), dp(30), dp(24), dp(27));
-        hero.setBackgroundColor(Color.rgb(16,55,35));
+        hero.setOrientation(LinearLayout.HORIZONTAL);
+        hero.setGravity(Gravity.CENTER_VERTICAL);
+        hero.setPadding(dp(22), dp(24), dp(22), dp(24));
+        hero.setBackgroundColor(GREEN);
 
-        TextView kicker = text("CONTROL DE ACCESO · SIN ROOT", 11, Color.rgb(229,138,43), true);
-        kicker.setLetterSpacing(0.08f);
-        hero.addView(kicker);
+        ImageView icon = logo(66);
+        hero.addView(icon);
 
-        TextView title = text("Antumapu Guard Lite", 29, Color.WHITE, true);
-        LinearLayout.LayoutParams titleP = new LinearLayout.LayoutParams(-1, -2);
-        titleP.setMargins(0, dp(8), 0, dp(6));
-        hero.addView(title, titleP);
+        LinearLayout heroText = new LinearLayout(this);
+        heroText.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams htp = new LinearLayout.LayoutParams(0, -2, 1f);
+        htp.setMargins(dp(16), 0, 0, 0);
 
-        hero.addView(text(
-                "Protege solo las áreas sensibles. El resto de Ajustes permanece disponible.",
-                15, Color.rgb(207,224,213), false));
+        TextView brand = text("PANGI", 12, ORANGE, true);
+        brand.setLetterSpacing(0.15f);
+        heroText.addView(brand);
+        heroText.addView(text("Protección de acceso", 25, Color.WHITE, true));
 
+        TextView desc = text("Panel de administración", 13, Color.rgb(190, 211, 198), false);
+        LinearLayout.LayoutParams dpv = new LinearLayout.LayoutParams(-1, -2);
+        dpv.setMargins(0, dp(4), 0, 0);
+        heroText.addView(desc, dpv);
+
+        hero.addView(heroText, htp);
         page.addView(hero);
 
         LinearLayout content = new LinearLayout(this);
@@ -110,71 +254,88 @@ public class MainActivity extends Activity {
         page.addView(content);
 
         LinearLayout status = card();
-        status.addView(sectionLabel("ESTADO"));
-        protectionStatus = text("", 19, Color.rgb(27,92,56), true);
+        status.addView(sectionLabel("ESTADO DEL DISPOSITIVO"));
+
+        protectionStatus = text("", 20, GREEN_2, true);
         LinearLayout.LayoutParams ps = new LinearLayout.LayoutParams(-1, -2);
-        ps.setMargins(0, dp(8), 0, dp(2));
+        ps.setMargins(0, dp(10), 0, dp(5));
         status.addView(protectionStatus, ps);
-        serviceStatus = text("", 14, Color.rgb(82,99,88), false);
+
+        serviceStatus = text("", 14, MUTED, false);
         status.addView(serviceStatus);
-        timeoutStatus = text("", 14, Color.rgb(82,99,88), false);
-        status.addView(timeoutStatus);
+
+        timeoutStatus = text("", 14, MUTED, false);
+        LinearLayout.LayoutParams ts = new LinearLayout.LayoutParams(-1, -2);
+        ts.setMargins(0, dp(3), 0, 0);
+        status.addView(timeoutStatus, ts);
+
+        maintenanceButton = actionButton("ACTIVAR MODO MANTENIMIENTO", true);
+        maintenanceButton.setOnClickListener(v -> {
+            if (Prefs.isUnlocked(this)) {
+                Prefs.lock(this);
+                Toast.makeText(this, "Protección restablecida", Toast.LENGTH_SHORT).show();
+            } else {
+                Prefs.unlock(this);
+                Toast.makeText(this, "Modo mantenimiento activado", Toast.LENGTH_SHORT).show();
+            }
+            refreshStatus();
+        });
+        status.addView(maintenanceButton);
+
+        Button lockNow = actionButton("BLOQUEAR AHORA", false);
+        lockNow.setOnClickListener(v -> {
+            Prefs.lock(this);
+            Toast.makeText(this, "Áreas sensibles bloqueadas", Toast.LENGTH_SHORT).show();
+            refreshStatus();
+        });
+        status.addView(lockNow);
         content.addView(status);
 
         LinearLayout protectedAreas = card();
-        protectedAreas.addView(sectionLabel("ÁREAS PROTEGIDAS"));
+        protectedAreas.addView(sectionLabel("PROTECCIONES"));
 
         TextView intro = text(
-                "Activa o desactiva cada protección. Ninguna de estas opciones bloquea Ajustes completo.",
-                13, Color.rgb(88,104,93), false);
-        LinearLayout.LayoutParams introP = new LinearLayout.LayoutParams(-1, -2);
-        introP.setMargins(0, dp(6), 0, dp(8));
-        protectedAreas.addView(intro, introP);
+                "Elige qué áreas requieren PIN. Los ajustes cotidianos siguen disponibles.",
+                13, MUTED, false);
+        LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(-1, -2);
+        ip.setMargins(0, dp(7), 0, dp(9));
+        protectedAreas.addView(intro, ip);
 
         protectedAreas.addView(toggleRow(
                 "Google Play Store",
-                "Pide PIN cada vez que se intenta abrir Play Store.",
+                "Solicita PIN antes de abrir la tienda.",
                 Prefs.protectPlay(this), 1));
 
         protectedAreas.addView(toggleRow(
                 "Instalación de APK",
-                "Protege Package Installer e Instalar apps desconocidas.",
+                "Protege Package Installer y fuentes desconocidas.",
                 Prefs.protectInstall(this), 2));
 
         protectedAreas.addView(toggleRow(
-                "Apps y desinstalación",
-                "Protege Ajustes > Aplicaciones, App info, desinstalar e inhabilitar.",
+                "Aplicaciones y desinstalación",
+                "Protege Aplicaciones, App info, desinstalar e inhabilitar.",
                 Prefs.protectApps(this), 3));
 
         protectedAreas.addView(toggleRow(
                 "Accesibilidad",
-                "Protege el lugar desde donde podrían apagar Antumapu Guard Lite.",
+                "Evita que se desactive Pangi sin autorización.",
                 Prefs.protectAccessibility(this), 4));
 
         protectedAreas.addView(toggleRow(
                 "Opciones de desarrollador",
-                "Opcional. Déjalo apagado mientras configuras la tablet.",
+                "Protección opcional para configuración avanzada.",
                 Prefs.protectDeveloper(this), 5));
 
         content.addView(protectedAreas);
 
-        LinearLayout free = card();
-        free.addView(sectionLabel("AJUSTES QUE SIGUEN LIBRES"));
-        TextView freeText = text(
-                "Wi‑Fi · Bluetooth · Sonido · Pantalla · Brillo · Idioma · Fecha y hora · Batería · Almacenamiento y demás ajustes cotidianos.",
-                14, Color.rgb(57,80,65), false);
-        LinearLayout.LayoutParams freeP = new LinearLayout.LayoutParams(-1, -2);
-        freeP.setMargins(0, dp(8), 0, 0);
-        free.addView(freeText, freeP);
-        content.addView(free);
-
         LinearLayout time = card();
-        time.addView(sectionLabel("TIEMPO DE DESBLOQUEO"));
+        time.addView(sectionLabel("ACCESO TEMPORAL"));
+
         TextView timeDesc = text(
-                "Después de ingresar el PIN, el permiso dura el tiempo elegido y luego se vuelve a bloquear.",
-                13, Color.rgb(88,104,93), false);
+                "Al autorizar un área protegida, Pangi puede mantenerla desbloqueada durante:",
+                13, MUTED, false);
         LinearLayout.LayoutParams td = new LinearLayout.LayoutParams(-1, -2);
-        td.setMargins(0, dp(6), 0, dp(10));
+        td.setMargins(0, dp(7), 0, dp(10));
         time.addView(timeDesc, td);
 
         LinearLayout timeRow = new LinearLayout(this);
@@ -185,80 +346,80 @@ public class MainActivity extends Activity {
         time.addView(timeRow);
         content.addView(time);
 
+        LinearLayout everyday = card();
+        everyday.addView(sectionLabel("AJUSTES COTIDIANOS"));
+        TextView everydayText = text(
+                "Wi‑Fi · Bluetooth · Sonido · Pantalla · Brillo · Idioma · Fecha y hora · Batería · Almacenamiento",
+                14, TEXT, false);
+        LinearLayout.LayoutParams ed = new LinearLayout.LayoutParams(-1, -2);
+        ed.setMargins(0, dp(8), 0, 0);
+        everyday.addView(everydayText, ed);
+        content.addView(everyday);
+
         LinearLayout service = card();
         service.addView(sectionLabel("SERVICIO DE PROTECCIÓN"));
-
         TextView serviceText = text(
-                "Antumapu Guard Lite necesita Accesibilidad para detectar qué pantalla está abierta. No requiere root ni modifica Android.",
-                13, Color.rgb(88,104,93), false);
+                "Pangi usa Accesibilidad para reconocer la pantalla activa. No requiere root ni modifica Android.",
+                13, MUTED, false);
         LinearLayout.LayoutParams st = new LinearLayout.LayoutParams(-1, -2);
-        st.setMargins(0, dp(6), 0, dp(10));
+        st.setMargins(0, dp(7), 0, dp(10));
         service.addView(serviceText, st);
 
-        Button accessibility = actionButton("ACTIVAR / REVISAR ACCESIBILIDAD", true);
+        Button accessibility = actionButton("REVISAR ACCESIBILIDAD", true);
         accessibility.setOnClickListener(v ->
                 startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
         service.addView(accessibility);
 
-        Button test = actionButton("PROBAR CON PLAY STORE", false);
+        Button test = actionButton("PROBAR BLOQUEO DE PLAY STORE", false);
         test.setOnClickListener(v -> openPlayStore());
         service.addView(test);
-
         content.addView(service);
 
         LinearLayout admin = card();
         admin.addView(sectionLabel("ADMINISTRACIÓN"));
 
-        Button lock = actionButton("BLOQUEAR AHORA", false);
-        lock.setOnClickListener(v -> {
-            Prefs.lock(this);
-            Toast.makeText(this, "Protección bloqueada nuevamente", Toast.LENGTH_SHORT).show();
-            refreshStatus();
-            showAdminLogin();
+        Button changePin = actionButton("CAMBIAR PIN", false);
+        changePin.setOnClickListener(v -> showPinSetup(false));
+        admin.addView(changePin);
+
+        Button logout = actionButton("CERRAR SESIÓN ADMINISTRATIVA", false);
+        logout.setOnClickListener(v -> {
+            adminAuthenticated = false;
+            buildAdminGate();
         });
-        admin.addView(lock);
-
-        Button pin = actionButton("CAMBIAR PIN ADMINISTRATIVO", false);
-        pin.setOnClickListener(v -> showPinSetup(false));
-        admin.addView(pin);
-
+        admin.addView(logout);
         content.addView(admin);
 
-        TextView warning = text(
-                "Protección local mediante Accesibilidad. No equivale a MDM o Device Owner y puede ser anulada mediante restablecimiento de fábrica o Modo seguro.",
-                12, Color.rgb(112,126,117), false);
-        warning.setGravity(Gravity.CENTER_HORIZONTAL);
-        LinearLayout.LayoutParams wp = new LinearLayout.LayoutParams(-1, -2);
-        wp.setMargins(dp(10), dp(2), dp(10), dp(10));
-        content.addView(warning, wp);
+        TextView legal = text(
+                "Pangi protege el acceso local mediante Accesibilidad. Un restablecimiento de fábrica o Modo seguro puede eludir este tipo de protección.",
+                11, Color.rgb(115, 128, 119), false);
+        legal.setGravity(Gravity.CENTER_HORIZONTAL);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+        lp.setMargins(dp(10), dp(2), dp(10), dp(12));
+        content.addView(legal, lp);
 
-        TextView foot = text("Antumapu Guard Lite · 1.0", 12,
-                Color.rgb(118,132,122), false);
+        TextView foot = text("Pangi · Protección de acceso · 1.2", 11,
+                Color.rgb(123, 136, 127), false);
         foot.setGravity(Gravity.CENTER_HORIZONTAL);
         content.addView(foot);
 
         setContentView(scroll);
+        refreshStatus();
     }
 
-    private TextView sectionLabel(String label) {
-        TextView t = text(label, 11, Color.rgb(87,105,92), true);
-        t.setLetterSpacing(0.07f);
-        return t;
-    }
-
-    private View toggleRow(String title, String subtitle, boolean checked, final int which) {
+    private LinearLayout toggleRow(String title, String subtitle, boolean checked, final int which) {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(0, dp(8), 0, dp(8));
+        row.setPadding(0, dp(10), 0, dp(10));
 
         LinearLayout labels = new LinearLayout(this);
         labels.setOrientation(LinearLayout.VERTICAL);
 
-        labels.addView(text(title, 16, Color.rgb(25,58,38), true));
-        TextView sub = text(subtitle, 12, Color.rgb(95,111,100), false);
+        labels.addView(text(title, 16, TEXT, true));
+        TextView sub = text(subtitle, 12, MUTED, false);
         LinearLayout.LayoutParams subP = new LinearLayout.LayoutParams(-1, -2);
-        subP.setMargins(0, dp(2), dp(8), 0);
+        subP.setMargins(0, dp(3), dp(10), 0);
         labels.addView(sub, subP);
 
         row.addView(labels, new LinearLayout.LayoutParams(0, -2, 1f));
@@ -266,9 +427,9 @@ public class MainActivity extends Activity {
         Switch sw = new Switch(this);
         sw.setChecked(checked);
         sw.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (!Prefs.hasPin(this) || !Prefs.isUnlocked(this)) {
+            if (!adminAuthenticated) {
                 buttonView.setChecked(!isChecked);
-                showAdminLogin();
+                buildAdminGate();
                 return;
             }
             if (which == 1) Prefs.setProtectPlay(this, isChecked);
@@ -279,6 +440,7 @@ public class MainActivity extends Activity {
             refreshStatus();
         });
         row.addView(sw);
+
         return row;
     }
 
@@ -286,9 +448,11 @@ public class MainActivity extends Activity {
         Button b = new Button(this);
         b.setText(label);
         b.setTextSize(12);
+        b.setTextColor(TEXT);
+        b.setBackground(outline(Color.WHITE, Color.rgb(210, 219, 213), 12));
         b.setOnClickListener(v -> {
-            if (!Prefs.isUnlocked(this)) {
-                showAdminLogin();
+            if (!adminAuthenticated) {
+                buildAdminGate();
                 return;
             }
             Prefs.setUnlockSeconds(this, seconds);
@@ -302,40 +466,48 @@ public class MainActivity extends Activity {
         Button b = new Button(this);
         b.setText(label);
         b.setTextSize(13);
-        b.setTextColor(primary ? Color.WHITE : Color.rgb(26,70,45));
-        if (primary) {
-            b.setBackground(round(Color.rgb(28,105,65), 12));
-        }
+        b.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        b.setTextColor(primary ? Color.WHITE : GREEN_2);
+        b.setBackground(primary
+                ? round(GREEN_2, 13)
+                : outline(Color.WHITE, Color.rgb(207, 220, 211), 13));
+
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, dp(52));
-        p.setMargins(0, dp(9), 0, 0);
+        p.setMargins(0, dp(10), 0, 0);
         b.setLayoutParams(p);
         return b;
     }
 
     private void refreshStatus() {
-        if (protectionStatus == null) return;
+        if (!adminAuthenticated || protectionStatus == null) return;
 
         boolean enabled = isServiceEnabled();
         boolean unlocked = Prefs.isUnlocked(this);
 
         if (!enabled) {
-            protectionStatus.setText("● Servicio pendiente");
-            protectionStatus.setTextColor(Color.rgb(194,93,31));
+            protectionStatus.setText("● Configuración pendiente");
+            protectionStatus.setTextColor(Color.rgb(194, 93, 31));
         } else if (unlocked) {
             protectionStatus.setText("● Modo mantenimiento");
-            protectionStatus.setTextColor(Color.rgb(201,117,24));
+            protectionStatus.setTextColor(ORANGE);
         } else {
             protectionStatus.setText("● Protección activa");
-            protectionStatus.setTextColor(Color.rgb(25,125,67));
+            protectionStatus.setTextColor(Color.rgb(25, 125, 67));
         }
 
         serviceStatus.setText(enabled
-                ? "Accesibilidad · activada"
-                : "Accesibilidad · debes activarla una vez");
+                ? "Accesibilidad · activa"
+                : "Accesibilidad · requiere activación");
 
         int sec = Prefs.getUnlockSeconds(this);
         String value = sec == 60 ? "1 minuto" : sec == 900 ? "15 minutos" : "5 minutos";
-        timeoutStatus.setText("Desbloqueo temporal · " + value);
+        timeoutStatus.setText("Acceso temporal · " + value);
+
+        if (maintenanceButton != null) {
+            maintenanceButton.setText(unlocked
+                    ? "FINALIZAR MODO MANTENIMIENTO"
+                    : "ACTIVAR MODO MANTENIMIENTO");
+        }
     }
 
     private boolean isServiceEnabled() {
@@ -363,50 +535,10 @@ public class MainActivity extends Activity {
         startActivity(launch);
     }
 
-    private void showAdminLogin() {
-        if (!Prefs.hasPin(this) || authDialogShowing) return;
-        authDialogShowing = true;
-
-        final EditText input = new EditText(this);
-        input.setHint("PIN administrativo");
-        input.setGravity(Gravity.CENTER);
-        input.setSingleLine(true);
-        input.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_VARIATION_PASSWORD);
-
-        AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Administración protegida")
-                .setMessage("Ingresa el PIN para modificar Antumapu Guard Lite.")
-                .setView(input)
-                .setCancelable(false)
-                .setNegativeButton("Salir", (d, w) -> {
-                    authDialogShowing = false;
-                    finish();
-                })
-                .setPositiveButton("Entrar", null)
-                .create();
-
-        dialog.setOnShowListener(d ->
-                dialog.getButton(DialogInterface.BUTTON_POSITIVE).setOnClickListener(v -> {
-                    String value = input.getText() == null ? "" : input.getText().toString();
-                    if (Prefs.checkPin(this, value)) {
-                        Prefs.unlock(this);
-                        authDialogShowing = false;
-                        dialog.dismiss();
-                        refreshStatus();
-                    } else {
-                        input.setText("");
-                        Toast.makeText(this, "PIN incorrecto", Toast.LENGTH_SHORT).show();
-                    }
-                }));
-
-        dialog.setOnDismissListener(d -> authDialogShowing = false);
-        dialog.show();
-    }
-
     private void showPinSetup(final boolean first) {
         LinearLayout fields = new LinearLayout(this);
         fields.setOrientation(LinearLayout.VERTICAL);
-        fields.setPadding(dp(22), dp(6), dp(22), 0);
+        fields.setPadding(dp(22), dp(8), dp(22), 0);
 
         final EditText one = new EditText(this);
         one.setHint(first ? "Crea un PIN de 4 a 12 dígitos" : "Nuevo PIN");
@@ -422,9 +554,9 @@ public class MainActivity extends Activity {
         fields.addView(two);
 
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle(first ? "Configurar protección" : "Cambiar PIN")
+                .setTitle(first ? "Crear PIN administrativo" : "Cambiar PIN")
                 .setMessage(first
-                        ? "Elige la clave administrativa que protegerá las áreas sensibles."
+                        ? "Este PIN protegerá Pangi y todas las áreas sensibles."
                         : "Define una nueva clave administrativa.")
                 .setView(fields)
                 .setCancelable(!first)
@@ -433,7 +565,7 @@ public class MainActivity extends Activity {
                 .create();
 
         dialog.setOnShowListener(d ->
-                dialog.getButton(DialogInterface.BUTTON_POSITIVE).setOnClickListener(v -> {
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
                     String a = one.getText() == null ? "" : one.getText().toString();
                     String b = two.getText() == null ? "" : two.getText().toString();
 
@@ -445,14 +577,23 @@ public class MainActivity extends Activity {
                     }
 
                     Prefs.setPin(this, a);
-                    Prefs.unlock(this);
+                    Prefs.lock(this);
                     dialog.dismiss();
-                    Toast.makeText(this,
-                            first ? "PIN creado. Ahora activa Accesibilidad." : "PIN actualizado",
-                            Toast.LENGTH_LONG).show();
-                    refreshStatus();
+
+                    if (first) {
+                        Toast.makeText(this,
+                                "PIN creado. Ingresa el PIN para acceder a Pangi.",
+                                Toast.LENGTH_LONG).show();
+                        buildAdminGate();
+                    } else {
+                        Toast.makeText(this, "PIN actualizado", Toast.LENGTH_SHORT).show();
+                    }
                 }));
 
         dialog.show();
+    }
+
+    @Override public void onBackPressed() {
+        finish();
     }
 }
