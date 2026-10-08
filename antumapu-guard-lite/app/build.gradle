@@ -1,0 +1,23 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'cl.antumapu.guardlite'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'cl.antumapu.guardlite'
+        minSdk 21
+        targetSdk 27
+        versionCode 1
+        versionName '1.0.0'
+    }
+
+    buildTypes {
+        release { minifyEnabled false }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
