@@ -1,0 +1,25 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'cl.antumapu.guard'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'cl.antumapu.guard'
+        minSdk 21
+        targetSdk 28
+        versionCode 3
+        versionName '3.0.0'
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_8
+        targetCompatibility JavaVersion.VERSION_8
+    }
+}
