@@ -2,6 +2,7 @@ package cl.antumapu.guardlite;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.admin.DevicePolicyManager;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.graphics.Color;
@@ -33,7 +34,9 @@ public class MainActivity extends Activity {
     private TextView protectionStatus;
     private TextView serviceStatus;
     private TextView timeoutStatus;
+    private TextView uninstallStatus;
     private Button maintenanceButton;
+    private Button deviceAdminButton;
 
     private int dp(int n) {
         return (int)(n * getResources().getDisplayMetrics().density + 0.5f);
@@ -375,6 +378,25 @@ public class MainActivity extends Activity {
         service.addView(test);
         content.addView(service);
 
+        LinearLayout uninstall = card();
+        uninstall.addView(sectionLabel("PROTECCIÓN CONTRA DESINSTALACIÓN"));
+
+        TextView uninstallText = text(
+                "Activa la protección administrativa de Android. Mientras esté activa, Pangi no puede desinstalarse desde el acceso directo, la pantalla de inicio ni Ajustes.",
+                13, MUTED, false);
+        LinearLayout.LayoutParams ut = new LinearLayout.LayoutParams(-1, -2);
+        ut.setMargins(0, dp(7), 0, dp(8));
+        uninstall.addView(uninstallText, ut);
+
+        uninstallStatus = text("", 15, TEXT, true);
+        uninstall.addView(uninstallStatus);
+
+        deviceAdminButton = actionButton("ACTIVAR PROTECCIÓN DE DESINSTALACIÓN", true);
+        deviceAdminButton.setOnClickListener(v -> requestDeviceAdmin());
+        uninstall.addView(deviceAdminButton);
+
+        content.addView(uninstall);
+
         LinearLayout admin = card();
         admin.addView(sectionLabel("ADMINISTRACIÓN"));
 
@@ -391,14 +413,14 @@ public class MainActivity extends Activity {
         content.addView(admin);
 
         TextView legal = text(
-                "Pangi protege el acceso local mediante Accesibilidad. Un restablecimiento de fábrica o Modo seguro puede eludir este tipo de protección.",
+                "Pangi combina Accesibilidad con la protección administrativa de Android. Un restablecimiento de fábrica sigue siendo un mecanismo externo de recuperación.",
                 11, Color.rgb(115, 128, 119), false);
         legal.setGravity(Gravity.CENTER_HORIZONTAL);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
         lp.setMargins(dp(10), dp(2), dp(10), dp(12));
         content.addView(legal, lp);
 
-        TextView foot = text("Pangi · Protección de acceso · 1.2", 11,
+        TextView foot = text("Pangi · Protección de acceso · 1.3", 11,
                 Color.rgb(123, 136, 127), false);
         foot.setGravity(Gravity.CENTER_HORIZONTAL);
         content.addView(foot);
@@ -508,6 +530,44 @@ public class MainActivity extends Activity {
                     ? "FINALIZAR MODO MANTENIMIENTO"
                     : "ACTIVAR MODO MANTENIMIENTO");
         }
+
+        boolean adminActive = isDeviceAdminActive();
+        if (uninstallStatus != null) {
+            uninstallStatus.setText(adminActive
+                    ? "● Protección del sistema activa"
+                    : "● Aún puede desinstalarse");
+            uninstallStatus.setTextColor(adminActive
+                    ? Color.rgb(25, 125, 67)
+                    : Color.rgb(194, 93, 31));
+        }
+        if (deviceAdminButton != null) {
+            deviceAdminButton.setEnabled(!adminActive);
+            deviceAdminButton.setText(adminActive
+                    ? "PROTECCIÓN ACTIVA"
+                    : "ACTIVAR PROTECCIÓN DE DESINSTALACIÓN");
+        }
+    }
+
+    private boolean isDeviceAdminActive() {
+        DevicePolicyManager dpm =
+                (DevicePolicyManager)getSystemService(DEVICE_POLICY_SERVICE);
+        ComponentName admin = new ComponentName(this, PangiDeviceAdminReceiver.class);
+        return dpm != null && dpm.isAdminActive(admin);
+    }
+
+    private void requestDeviceAdmin() {
+        if (isDeviceAdminActive()) {
+            Toast.makeText(this, "La protección contra desinstalación ya está activa", Toast.LENGTH_SHORT).show();
+            refreshStatus();
+            return;
+        }
+
+        ComponentName admin = new ComponentName(this, PangiDeviceAdminReceiver.class);
+        Intent intent = new Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN);
+        intent.putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, admin);
+        intent.putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION,
+                "Activa esta protección para impedir que Pangi sea desinstalado sin autorización administrativa.");
+        startActivity(intent);
     }
 
     private boolean isServiceEnabled() {
@@ -585,6 +645,7 @@ public class MainActivity extends Activity {
                                 "PIN creado. Ingresa el PIN para acceder a Pangi.",
                                 Toast.LENGTH_LONG).show();
                         buildAdminGate();
+                        requestDeviceAdmin();
                     } else {
                         Toast.makeText(this, "PIN actualizado", Toast.LENGTH_SHORT).show();
                     }
