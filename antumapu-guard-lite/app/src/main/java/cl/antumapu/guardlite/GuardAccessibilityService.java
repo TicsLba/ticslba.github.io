@@ -78,6 +78,12 @@ public class GuardAccessibilityService extends AccessibilityService {
             return "Aplicaciones y desinstalación";
         }
 
+        if (Prefs.protectApps(this) &&
+                containsAny(c, "deviceadmin", "deviceadminadd", "deviceadminsettings",
+                        "deviceadministratorsettings", "deviceadminlist")) {
+            return "Administración del dispositivo";
+        }
+
         if (Prefs.protectAccessibility(this) && c.contains("accessibility")) {
             return "Accesibilidad";
         }
@@ -113,6 +119,14 @@ public class GuardAccessibilityService extends AccessibilityService {
                 return "Accesibilidad";
             }
 
+            if (Prefs.protectApps(this) && titleMatches(rightPane,
+                    "administradores del dispositivo", "administrador del dispositivo",
+                    "apps de administracion del dispositivo",
+                    "aplicaciones de administracion del dispositivo",
+                    "device administrators", "device admin apps")) {
+                return "Administración del dispositivo";
+            }
+
             if (Prefs.protectDeveloper(this) && titleMatches(rightPane,
                     "opciones de desarrollador", "developer options")) {
                 return "Opciones de desarrollador";
@@ -138,6 +152,14 @@ public class GuardAccessibilityService extends AccessibilityService {
             if (Prefs.protectAccessibility(this) && titleMatches(top,
                     "accesibilidad", "accessibility")) {
                 return "Accesibilidad";
+            }
+
+            if (Prefs.protectApps(this) && titleMatches(top,
+                    "administradores del dispositivo", "administrador del dispositivo",
+                    "apps de administracion del dispositivo",
+                    "aplicaciones de administracion del dispositivo",
+                    "device administrators", "device admin apps")) {
+                return "Administración del dispositivo";
             }
 
             if (Prefs.protectDeveloper(this) && titleMatches(top,
