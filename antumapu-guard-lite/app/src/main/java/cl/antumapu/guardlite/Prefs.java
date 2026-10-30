@@ -107,4 +107,13 @@ public final class Prefs {
 
     public static boolean protectDeveloper(Context c) { return get(c, "developer", false); }
     public static void setProtectDeveloper(Context c, boolean v) { set(c, "developer", v); }
+
+    public static boolean blockUnknownSources(Context c) { return get(c, "do_unknown_sources", true); }
+    public static void setBlockUnknownSources(Context c, boolean v) { set(c, "do_unknown_sources", v); }
+
+    public static boolean blockAppsControl(Context c) { return get(c, "do_apps_control", true); }
+    public static void setBlockAppsControl(Context c, boolean v) { set(c, "do_apps_control", v); }
+
+    public static boolean blockPlayStore(Context c) { return get(c, "do_play_store", true); }
+    public static void setBlockPlayStore(Context c, boolean v) { set(c, "do_play_store", v); }
 }
