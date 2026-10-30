@@ -7,7 +7,7 @@ android {
     defaultConfig {
         applicationId 'cl.antumapu.guardlite'
         minSdk 21
-        targetSdk 27
+        targetSdk 35
         versionCode 5
         versionName '1.4.0'
     }
