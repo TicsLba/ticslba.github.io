@@ -1,4 +1,4 @@
-name: Build Pangi
+name: Build Pangi Release
 
 on:
   push:
@@ -47,21 +47,21 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Build APK
+      - name: Build unsigned release APK
         working-directory: antumapu-guard-lite
-        run: gradle :app:assembleDebug --stacktrace
+        run: gradle :app:assembleRelease --stacktrace
 
-      - name: Verify APK
+      - name: Verify release is not debuggable
         run: |
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose antumapu-guard-lite/app/build/outputs/apk/debug/app-debug.apk
-          sha256sum antumapu-guard-lite/app/build/outputs/apk/debug/app-debug.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging antumapu-guard-lite/app/build/outputs/apk/release/app-release-unsigned.apk | head -20
+          sha256sum antumapu-guard-lite/app/build/outputs/apk/release/app-release-unsigned.apk
 
-      - name: Rename APK
-        run: cp antumapu-guard-lite/app/build/outputs/apk/debug/app-debug.apk Pangi-1.3.apk
+      - name: Rename unsigned APK
+        run: cp antumapu-guard-lite/app/build/outputs/apk/release/app-release-unsigned.apk Pangi-1.4-unsigned.apk
 
-      - name: Upload APK
+      - name: Upload unsigned release
         uses: actions/upload-artifact@v4
         with:
-          name: Pangi-1.3-APK
-          path: Pangi-1.3.apk
+          name: Pangi-1.4-Unsigned
+          path: Pangi-1.4-unsigned.apk
           retention-days: 7
