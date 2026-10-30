@@ -1,6 +1,5 @@
 <resources>
     <string name="app_name">Pangi</string>
-    <string name="app_tagline">Protección de acceso</string>
-    <string name="accessibility_description">Pangi protege por PIN Play Store, instalación de APK y áreas administrativas específicas sin bloquear los ajustes cotidianos.</string>
-    <string name="device_admin_description">Impide que Pangi sea desinstalado sin desactivar primero la protección administrativa.</string>
+    <string name="app_tagline">Gestión institucional</string>
+    <string name="device_admin_description">Pangi administra políticas institucionales del dispositivo como Device Owner.</string>
 </resources>
