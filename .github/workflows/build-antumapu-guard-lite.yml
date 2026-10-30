@@ -1,4 +1,4 @@
-name: Build Pangi 2.0
+name: Build Pangi 2.1
 
 on:
   push:
