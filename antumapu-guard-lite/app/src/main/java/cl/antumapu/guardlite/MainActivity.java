@@ -362,15 +362,14 @@ public class MainActivity extends Activity {
         LinearLayout service = card();
         service.addView(sectionLabel("SERVICIO DE PROTECCIÓN"));
         TextView serviceText = text(
-                "Pangi usa Accesibilidad para reconocer la pantalla activa. No requiere root ni modifica Android.",
+                "Pangi usa el servicio de Accesibilidad para reconocer qué área administrativa está visible y aplicar la protección configurada. El procesamiento se realiza localmente en el dispositivo.",
                 13, MUTED, false);
         LinearLayout.LayoutParams st = new LinearLayout.LayoutParams(-1, -2);
         st.setMargins(0, dp(7), 0, dp(10));
         service.addView(serviceText, st);
 
-        Button accessibility = actionButton("REVISAR ACCESIBILIDAD", true);
-        accessibility.setOnClickListener(v ->
-                startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
+        Button accessibility = actionButton("ACTIVAR / REVISAR ACCESIBILIDAD", true);
+        accessibility.setOnClickListener(v -> showAccessibilityDisclosure());
         service.addView(accessibility);
 
         Button test = actionButton("PROBAR BLOQUEO DE PLAY STORE", false);
@@ -420,7 +419,7 @@ public class MainActivity extends Activity {
         lp.setMargins(dp(10), dp(2), dp(10), dp(12));
         content.addView(legal, lp);
 
-        TextView foot = text("Pangi · Protección de acceso · 1.3", 11,
+        TextView foot = text("Pangi · Protección de acceso · 1.4.1", 11,
                 Color.rgb(123, 136, 127), false);
         foot.setGravity(Gravity.CENTER_HORIZONTAL);
         content.addView(foot);
@@ -568,6 +567,19 @@ public class MainActivity extends Activity {
         intent.putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION,
                 "Activa esta protección para impedir que Pangi sea desinstalado sin autorización administrativa.");
         startActivity(intent);
+    }
+
+    private void showAccessibilityDisclosure() {
+        new AlertDialog.Builder(this)
+                .setTitle("Uso del servicio de Accesibilidad")
+                .setMessage(
+                        "Pangi utiliza el servicio de Accesibilidad para detectar la aplicación y el título de la pantalla que está abierta, únicamente con el fin de reconocer áreas protegidas como Play Store, Aplicaciones, Accesibilidad y administración del dispositivo.\n\n" +
+                        "Pangi no registra pulsaciones de teclado, contraseñas ni contenido personal, y no transmite estos datos a servidores externos. El análisis ocurre localmente en la tablet.\n\n" +
+                        "Si continúas, aceptas este uso y Android abrirá la pantalla del sistema para que decidas si activas el servicio.")
+                .setNegativeButton("Cancelar", null)
+                .setPositiveButton("ACEPTO Y CONTINUAR", (dialog, which) ->
+                        startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)))
+                .show();
     }
 
     private boolean isServiceEnabled() {
