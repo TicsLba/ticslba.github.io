@@ -11,6 +11,19 @@
         android:supportsRtl="true">
 
         <activity
+            android:name=".HomeActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:theme="@style/AppTheme">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <activity
             android:name=".SplashActivity"
             android:exported="false"
             android:excludeFromRecents="true"
@@ -37,7 +50,9 @@
             </intent-filter>
         </receiver>
 
-        <receiver android:name=".BootReceiver" android:exported="false">
+        <receiver
+            android:name=".BootReceiver"
+            android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
