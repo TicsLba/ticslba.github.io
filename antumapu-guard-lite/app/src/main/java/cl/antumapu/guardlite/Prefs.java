@@ -14,6 +14,9 @@ public final class Prefs {
     private static final String PIN_SALT = "pin_salt";
     private static final String UNLOCK_UNTIL = "unlock_until";
     private static final String UNLOCK_SECONDS = "unlock_seconds";
+    private static final String LAST_SPLASH_BOOT = "last_splash_boot";
+    private static final String LAST_SPLASH_WALL = "last_splash_wall";
+    private static final String ORIGINAL_HOME = "original_home_component";
 
     private Prefs() {}
 
@@ -116,4 +119,27 @@ public final class Prefs {
 
     public static boolean blockPlayStore(Context c) { return get(c, "do_play_store", true); }
     public static void setBlockPlayStore(Context c, boolean v) { set(c, "do_play_store", v); }
+
+    public static boolean shouldShowSplashForBoot(Context c, int bootCount) {
+        if (bootCount >= 0) {
+            return p(c).getInt(LAST_SPLASH_BOOT, Integer.MIN_VALUE) != bootCount;
+        }
+        long last = p(c).getLong(LAST_SPLASH_WALL, 0L);
+        return System.currentTimeMillis() - last > 30000L;
+    }
+
+    public static void markSplashShownForBoot(Context c, int bootCount) {
+        SharedPreferences.Editor e = p(c).edit().putLong(LAST_SPLASH_WALL, System.currentTimeMillis());
+        if (bootCount >= 0) e.putInt(LAST_SPLASH_BOOT, bootCount);
+        e.apply();
+    }
+
+    public static void setOriginalHome(Context c, String flattenedComponent) {
+        if (flattenedComponent == null || flattenedComponent.length() == 0) return;
+        p(c).edit().putString(ORIGINAL_HOME, flattenedComponent).apply();
+    }
+
+    public static String getOriginalHome(Context c) {
+        return p(c).getString(ORIGINAL_HOME, "");
+    }
 }
