@@ -127,7 +127,7 @@ public class MainActivity extends Activity {
         root.setBackgroundColor(GREEN);
         root.addView(logo(96));
 
-        TextView brand = text("PANGI 2.0", 13, ORANGE, true);
+        TextView brand = text("PANGI 2.2", 13, ORANGE, true);
         brand.setLetterSpacing(0.15f);
         brand.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(-1, -2);
@@ -206,7 +206,7 @@ public class MainActivity extends Activity {
         heroText.setOrientation(LinearLayout.VERTICAL);
         LinearLayout.LayoutParams htp = new LinearLayout.LayoutParams(0, -2, 1f);
         htp.setMargins(dp(16), 0, 0, 0);
-        TextView brand = text("PANGI 2.0", 12, ORANGE, true);
+        TextView brand = text("PANGI 2.2", 12, ORANGE, true);
         brand.setLetterSpacing(0.14f);
         heroText.addView(brand);
         heroText.addView(text("Gestión institucional", 25, Color.WHITE, true));
@@ -242,6 +242,53 @@ public class MainActivity extends Activity {
             status.addView(anti, ap);
         }
         content.addView(status);
+
+        LinearLayout startup = card();
+        startup.addView(sectionLabel("INICIO INSTITUCIONAL"));
+
+        boolean pangiHome = PangiPolicyManager.isPangiHome(this);
+        TextView homeState = text(
+                pangiHome ? "● Pangi es la pantalla de inicio" : "● Launcher institucional pendiente",
+                16,
+                pangiHome ? Color.rgb(25,125,67) : Color.rgb(194,93,31),
+                true);
+        LinearLayout.LayoutParams hsp = new LinearLayout.LayoutParams(-1, -2);
+        hsp.setMargins(0, dp(8), 0, dp(4));
+        startup.addView(homeState, hsp);
+
+        startup.addView(text(
+                "Al arrancar, Android entra primero a Pangi, muestra la identidad institucional y después entrega el control al launcher del fabricante.",
+                13, MUTED, false));
+
+        Button setHome = actionButton("REAPLICAR PANGI COMO INICIO", true);
+        setHome.setEnabled(owner);
+        setHome.setOnClickListener(v -> {
+            boolean ok = PangiPolicyManager.setPangiAsHome(this);
+            Toast.makeText(this,
+                    ok ? "Pangi quedó configurado como inicio" : "No fue posible configurar el inicio",
+                    Toast.LENGTH_LONG).show();
+            if (ok) buildDashboard();
+        });
+        startup.addView(setHome);
+
+        Button restoreHome = actionButton("RESTAURAR LAUNCHER ORIGINAL", false);
+        restoreHome.setEnabled(owner);
+        restoreHome.setOnClickListener(v ->
+                new AlertDialog.Builder(this)
+                        .setTitle("Restaurar launcher original")
+                        .setMessage("Pangi dejará de ser la pantalla HOME persistente. Las demás políticas y Device Owner permanecerán activas. ¿Continuar?")
+                        .setNegativeButton("Cancelar", null)
+                        .setPositiveButton("Restaurar", (dialog, which) -> {
+                            boolean ok = PangiPolicyManager.restoreOriginalHome(this);
+                            Toast.makeText(this,
+                                    ok ? "Launcher institucional liberado" : "No fue posible restaurar el launcher",
+                                    Toast.LENGTH_LONG).show();
+                            if (ok) PangiPolicyManager.launchOriginalHome(this);
+                        })
+                        .show());
+        startup.addView(restoreHome);
+
+        content.addView(startup);
 
         LinearLayout policies = card();
         policies.addView(sectionLabel("POLÍTICAS"));
@@ -294,7 +341,7 @@ public class MainActivity extends Activity {
 
         content.addView(admin);
 
-        TextView foot = text("Pangi 2.0 · Gestión institucional · sin root · sin Accesibilidad",
+        TextView foot = text("Pangi 2.2 · Gestión institucional · HOME administrado · sin root",
                 11, Color.rgb(123,136,127), false);
         foot.setGravity(Gravity.CENTER_HORIZONTAL);
         content.addView(foot);
