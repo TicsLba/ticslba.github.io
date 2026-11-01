@@ -19,6 +19,8 @@ import android.widget.TextView;
 import java.io.File;
 
 public class SplashActivity extends Activity {
+    private final Handler handler = new Handler();
+
     private int dp(int n) {
         return (int)(n * getResources().getDisplayMetrics().density + 0.5f);
     }
@@ -30,7 +32,6 @@ public class SplashActivity extends Activity {
         getWindow().setFlags(
                 WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
-
         getWindow().getDecorView().setSystemUiVisibility(
                 View.SYSTEM_UI_FLAG_FULLSCREEN |
                 View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
@@ -41,22 +42,16 @@ public class SplashActivity extends Activity {
 
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
-        content.setGravity(Gravity.CENTER);
-        content.setPadding(dp(32), dp(24), dp(32), dp(24));
+        content.setGravity(Gravity.CENTER_HORIZONTAL);
+        content.setPadding(dp(28), dp(34), dp(28), dp(28));
         root.addView(content, new FrameLayout.LayoutParams(-1, -1));
 
         ImageView logo = new ImageView(this);
         logo.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        logo.setContentDescription("Liceo Bicentenario Antumapu");
         logo.setAlpha(0f);
 
-        File external = getExternalFilesDir(null);
-        File logoFile = external == null ? null : new File(external, "logo_antumapu.webp");
-        Bitmap bitmap = null;
-
-        if (logoFile != null && logoFile.exists()) {
-            bitmap = BitmapFactory.decodeFile(logoFile.getAbsolutePath());
-        }
-
+        Bitmap bitmap = loadInstitutionalLogo();
         if (bitmap != null) {
             logo.setImageBitmap(bitmap);
         } else {
@@ -64,46 +59,95 @@ public class SplashActivity extends Activity {
         }
 
         LinearLayout.LayoutParams logoParams =
-                new LinearLayout.LayoutParams(dp(360), dp(282));
+                new LinearLayout.LayoutParams(-1, 0, 0.43f);
+        logoParams.setMargins(dp(22), 0, dp(22), dp(4));
         content.addView(logo, logoParams);
 
-        TextView institutional = new TextView(this);
-        institutional.setText("DISPOSITIVO INSTITUCIONAL");
-        institutional.setTextColor(Color.rgb(0, 90, 18));
-        institutional.setTextSize(14);
-        institutional.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        institutional.setLetterSpacing(0.14f);
-        institutional.setGravity(Gravity.CENTER);
+        TextView name = new TextView(this);
+        name.setText("Pangi");
+        name.setTextColor(Color.rgb(0, 90, 18));
+        name.setTextSize(40);
+        name.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        name.setGravity(Gravity.CENTER);
+        name.setAlpha(0f);
+        content.addView(name, new LinearLayout.LayoutParams(-1, -2));
 
-        LinearLayout.LayoutParams institutionalParams =
+        TextView descriptor = new TextView(this);
+        descriptor.setText("GESTIÓN INSTITUCIONAL");
+        descriptor.setTextColor(Color.rgb(244, 90, 30));
+        descriptor.setTextSize(12);
+        descriptor.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        descriptor.setLetterSpacing(0.16f);
+        descriptor.setGravity(Gravity.CENTER);
+
+        LinearLayout.LayoutParams descriptorParams =
                 new LinearLayout.LayoutParams(-1, -2);
-        institutionalParams.setMargins(0, dp(22), 0, dp(5));
-        content.addView(institutional, institutionalParams);
+        descriptorParams.setMargins(0, dp(6), 0, 0);
+        content.addView(descriptor, descriptorParams);
 
-        TextView managed = new TextView(this);
-        managed.setText("Gestión protegida por Pangi");
-        managed.setTextColor(Color.rgb(86, 96, 89));
-        managed.setTextSize(13);
-        managed.setGravity(Gravity.CENTER);
-        content.addView(managed);
+        View spacer = new View(this);
+        content.addView(spacer, new LinearLayout.LayoutParams(1, 0, 0.27f));
+
+        TextView developed = new TextView(this);
+        developed.setText("Desarrollado por la Coordinación Informática del Liceo Bicentenario Antumapu");
+        developed.setTextColor(Color.rgb(75, 86, 78));
+        developed.setTextSize(12);
+        developed.setGravity(Gravity.CENTER);
+        developed.setLineSpacing(0f, 1.12f);
+        content.addView(developed, new LinearLayout.LayoutParams(-1, -2));
+
+        TextView author = new TextView(this);
+        author.setText("© Eduardo Pérez González");
+        author.setTextColor(Color.rgb(0, 90, 18));
+        author.setTextSize(12);
+        author.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        author.setGravity(Gravity.CENTER);
+
+        LinearLayout.LayoutParams authorParams =
+                new LinearLayout.LayoutParams(-1, -2);
+        authorParams.setMargins(0, dp(8), 0, dp(4));
+        content.addView(author, authorParams);
 
         View accent = new View(this);
         accent.setBackgroundColor(Color.rgb(244, 90, 30));
         FrameLayout.LayoutParams accentParams =
-                new FrameLayout.LayoutParams(-1, dp(6), Gravity.BOTTOM);
+                new FrameLayout.LayoutParams(-1, dp(5), Gravity.BOTTOM);
         root.addView(accent, accentParams);
 
         setContentView(root);
 
-        logo.animate()
-                .alpha(1f)
-                .setDuration(650)
-                .start();
+        logo.animate().alpha(1f).setDuration(260).start();
+        name.animate().alpha(1f).setStartDelay(90).setDuration(260).start();
 
-        new Handler().postDelayed(this::finish, 3200L);
+        handler.postDelayed(this::finish, 1550L);
+    }
+
+    private Bitmap loadInstitutionalLogo() {
+        try {
+            File dir = getExternalFilesDir(null);
+            if (dir == null) return null;
+
+            File png = new File(dir, "logo_antumapu.png");
+            if (png.exists()) {
+                Bitmap b = BitmapFactory.decodeFile(png.getAbsolutePath());
+                if (b != null) return b;
+            }
+
+            File webp = new File(dir, "logo_antumapu.webp");
+            if (webp.exists()) {
+                return BitmapFactory.decodeFile(webp.getAbsolutePath());
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
+    }
+
+    @Override protected void onDestroy() {
+        handler.removeCallbacksAndMessages(null);
+        super.onDestroy();
     }
 
     @Override public void onBackPressed() {
-        // La pantalla institucional termina automáticamente.
+        // La presentación termina automáticamente.
     }
 }
