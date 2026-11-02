@@ -2,11 +2,13 @@ package cl.antumapu.guardlite;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.Build;
 import android.util.Base64;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
+import java.util.UUID;
 
 public final class Prefs {
     private static final String FILE = "guard_lite";
@@ -17,6 +19,17 @@ public final class Prefs {
     private static final String LAST_SPLASH_BOOT = "last_splash_boot";
     private static final String LAST_SPLASH_WALL = "last_splash_wall";
     private static final String ORIGINAL_HOME = "original_home_component";
+
+    private static final String FLEET_ENABLED = "fleet_enabled";
+    private static final String CONSOLE_URL = "console_url";
+    private static final String CONSOLE_TOKEN = "console_token";
+    private static final String DEVICE_ID = "fleet_device_id";
+    private static final String DEVICE_LABEL = "fleet_device_label";
+    private static final String LAST_HEARTBEAT = "fleet_last_heartbeat";
+    private static final String LAST_LAT = "fleet_last_lat";
+    private static final String LAST_LON = "fleet_last_lon";
+    private static final String LAST_ACCURACY = "fleet_last_accuracy";
+    private static final String LAST_LOCATION_AT = "fleet_last_location_at";
 
     private Prefs() {}
 
@@ -141,5 +154,89 @@ public final class Prefs {
 
     public static String getOriginalHome(Context c) {
         return p(c).getString(ORIGINAL_HOME, "");
+    }
+
+    public static boolean fleetEnabled(Context c) {
+        return p(c).getBoolean(FLEET_ENABLED, false);
+    }
+
+    public static void setFleetEnabled(Context c, boolean enabled) {
+        p(c).edit().putBoolean(FLEET_ENABLED, enabled).apply();
+    }
+
+    public static String consoleUrl(Context c) {
+        return p(c).getString(CONSOLE_URL, "");
+    }
+
+    public static String consoleToken(Context c) {
+        return p(c).getString(CONSOLE_TOKEN, "");
+    }
+
+    public static void setConsoleConfig(Context c, String url, String token, String label) {
+        p(c).edit()
+                .putString(CONSOLE_URL, url == null ? "" : url.trim())
+                .putString(CONSOLE_TOKEN, token == null ? "" : token.trim())
+                .putString(DEVICE_LABEL, label == null ? "" : label.trim())
+                .apply();
+    }
+
+    public static boolean consoleConfigured(Context c) {
+        return consoleUrl(c).startsWith("https://") && consoleToken(c).length() >= 12;
+    }
+
+    public static String deviceId(Context c) {
+        String id = p(c).getString(DEVICE_ID, "");
+        if (id.length() == 0) {
+            id = UUID.randomUUID().toString();
+            p(c).edit().putString(DEVICE_ID, id).apply();
+        }
+        return id;
+    }
+
+    public static String deviceLabel(Context c) {
+        String label = p(c).getString(DEVICE_LABEL, "");
+        if (label.length() == 0) {
+            label = Build.MANUFACTURER + " " + Build.MODEL;
+        }
+        return label;
+    }
+
+    public static void markHeartbeat(Context c) {
+        p(c).edit().putLong(LAST_HEARTBEAT, System.currentTimeMillis()).apply();
+    }
+
+    public static long lastHeartbeat(Context c) {
+        return p(c).getLong(LAST_HEARTBEAT, 0L);
+    }
+
+    public static void saveLocation(Context c, double lat, double lon, float accuracy, long at) {
+        p(c).edit()
+                .putString(LAST_LAT, Double.toString(lat))
+                .putString(LAST_LON, Double.toString(lon))
+                .putFloat(LAST_ACCURACY, accuracy)
+                .putLong(LAST_LOCATION_AT, at)
+                .apply();
+    }
+
+    public static boolean hasLocation(Context c) {
+        return p(c).contains(LAST_LAT) && p(c).contains(LAST_LON);
+    }
+
+    public static double lastLat(Context c) {
+        try { return Double.parseDouble(p(c).getString(LAST_LAT, "0")); }
+        catch (Exception e) { return 0d; }
+    }
+
+    public static double lastLon(Context c) {
+        try { return Double.parseDouble(p(c).getString(LAST_LON, "0")); }
+        catch (Exception e) { return 0d; }
+    }
+
+    public static float lastAccuracy(Context c) {
+        return p(c).getFloat(LAST_ACCURACY, 0f);
+    }
+
+    public static long lastLocationAt(Context c) {
+        return p(c).getLong(LAST_LOCATION_AT, 0L);
     }
 }
