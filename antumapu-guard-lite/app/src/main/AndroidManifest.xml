@@ -10,24 +10,13 @@
         android:theme="@style/AppTheme"
         android:supportsRtl="true">
 
-        <activity
-            android:name=".HomeActivity"
-            android:exported="true"
-            android:excludeFromRecents="true"
-            android:launchMode="singleTask"
-            android:theme="@style/AppTheme">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.HOME" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-        </activity>
+        <!-- Pangi 3.0 intentionally declares NO HOME/CATEGORY_HOME activity. -->
 
         <activity
             android:name=".SplashActivity"
             android:exported="false"
             android:excludeFromRecents="true"
-            android:theme="@style/AppTheme" />
+            android:theme="@style/SplashTheme" />
 
         <activity
             android:name=".MainActivity"
