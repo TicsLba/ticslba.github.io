@@ -1,5 +1,6 @@
 package cl.antumapu.guardlite;
 
+import android.Manifest;
 import android.app.admin.DevicePolicyManager;
 import android.content.ComponentName;
 import android.content.Context;
@@ -8,6 +9,7 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.os.Build;
 import android.os.UserManager;
+import android.provider.Settings;
 
 public final class PangiPolicyManager {
     private PangiPolicyManager() {}
@@ -28,14 +30,18 @@ public final class PangiPolicyManager {
     public static void applyDefaults(Context context) {
         if (!isDeviceOwner(context)) return;
 
-        // Pangi 3.0 never acts as HOME. This also cleans any preference left by 2.2.
         clearLegacyLauncherOverride(context);
-
         setSelfUninstallBlocked(context, true);
         setUnknownSourcesBlocked(context, Prefs.blockUnknownSources(context));
         setAppsControlBlocked(context, Prefs.blockAppsControl(context));
         setPlayStoreBlocked(context, Prefs.blockPlayStore(context));
         applyInstitutionalBranding(context);
+
+        if (Prefs.fleetEnabled(context) && Prefs.consoleConfigured(context)) {
+            grantFleetPermissions(context);
+            ensureLocationEnabled(context);
+            PangiFleetService.start(context);
+        }
     }
 
     public static void clearLegacyLauncherOverride(Context context) {
@@ -60,7 +66,7 @@ public final class PangiPolicyManager {
             try {
                 dpm.setDeviceOwnerLockScreenInfo(
                         admin(context),
-                        "Liceo Bicentenario Antumapu · Dispositivo institucional · Pangi 3.0");
+                        "Liceo Bicentenario Antumapu · Dispositivo institucional · Pangi 3.1");
             } catch (Exception ignored) {
             }
         }
@@ -113,6 +119,83 @@ public final class PangiPolicyManager {
             dpm.setApplicationHidden(admin(context), "com.android.vending", blocked);
             Prefs.setBlockPlayStore(context, blocked);
         } catch (Exception ignored) {
+        }
+    }
+
+    public static void setFleetMonitoring(Context context, boolean enabled) {
+        Prefs.setFleetEnabled(context, enabled);
+
+        if (!enabled) {
+            PangiFleetService.stop(context);
+            return;
+        }
+
+        if (!isDeviceOwner(context) || !Prefs.consoleConfigured(context)) {
+            Prefs.setFleetEnabled(context, false);
+            return;
+        }
+
+        grantFleetPermissions(context);
+        ensureLocationEnabled(context);
+        PangiFleetService.start(context);
+    }
+
+    public static void grantFleetPermissions(Context context) {
+        if (!isDeviceOwner(context) || Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return;
+
+        DevicePolicyManager dpm = dpm(context);
+        String pkg = context.getPackageName();
+
+        try {
+            dpm.setPermissionGrantState(
+                    admin(context), pkg, Manifest.permission.ACCESS_FINE_LOCATION,
+                    DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED);
+            dpm.setPermissionGrantState(
+                    admin(context), pkg, Manifest.permission.ACCESS_COARSE_LOCATION,
+                    DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED);
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                dpm.setPermissionGrantState(
+                        admin(context), pkg, Manifest.permission.ACCESS_BACKGROUND_LOCATION,
+                        DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED);
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    public static void ensureLocationEnabled(Context context) {
+        if (!isDeviceOwner(context)) return;
+        DevicePolicyManager dpm = dpm(context);
+
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                dpm.setLocationEnabled(admin(context), true);
+            } else {
+                dpm.setSecureSetting(
+                        admin(context),
+                        Settings.Secure.LOCATION_MODE,
+                        String.valueOf(Settings.Secure.LOCATION_MODE_HIGH_ACCURACY));
+            }
+        } catch (Exception ignored) {
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            try {
+                dpm.addUserRestriction(admin(context), UserManager.DISALLOW_CONFIG_LOCATION);
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    public static boolean lockDevice(Context context) {
+        DevicePolicyManager dpm = dpm(context);
+        if (dpm == null || !isDeviceOwner(context)) return false;
+
+        try {
+            dpm.lockNow();
+            return true;
+        } catch (Exception e) {
+            return false;
         }
     }
 
