@@ -5,6 +5,7 @@ const OFFLINE_AFTER_MS = 180000;
 function setupPangiConsole() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   if (!ss) throw new Error('Abre este script desde una Hoja de cálculo de Google.');
+  PropertiesService.getScriptProperties().setProperty('SPREADSHEET_ID', ss.getId());
 
   let devices = ss.getSheetByName(DEVICES_SHEET);
   if (!devices) devices = ss.insertSheet(DEVICES_SHEET);
@@ -227,8 +228,16 @@ function consoleRename(adminToken, deviceId, alias) {
   return {ok:true};
 }
 
+function ss_() {
+  const id = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');
+  if (id) return SpreadsheetApp.openById(id);
+  const active = SpreadsheetApp.getActiveSpreadsheet();
+  if (!active) throw new Error('Pangi Console no está inicializada. Ejecuta setupPangiConsole().');
+  return active;
+}
+
 function deviceSheet_() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = ss_();
   let sheet = ss.getSheetByName(DEVICES_SHEET);
   if (!sheet) {
     setupPangiConsole();
@@ -266,7 +275,7 @@ function assertAdminTokenValue_(token) {
 }
 
 function configValue_(key) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = ss_();
   const sheet = ss.getSheetByName(CONFIG_SHEET);
   if (!sheet) return '';
   const last = sheet.getLastRow();
