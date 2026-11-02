@@ -12,8 +12,12 @@ public class BootReceiver extends BroadcastReceiver {
         Prefs.lock(context);
         PangiPolicyManager.applyDefaults(context);
 
-        // Android 10+ restricts background activity starts. Pangi 3.0 deliberately
-        // does not replace HOME and does not show a late intrusive splash there.
+        if (Prefs.fleetEnabled(context) && Prefs.consoleConfigured(context)) {
+            PangiFleetService.start(context);
+        }
+
+        // Pangi never replaces HOME. On Android 8.1/9 only, the institutional
+        // presentation may appear after boot; Android 10+ keeps the OEM launcher uninterrupted.
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
                 PangiPolicyManager.isDeviceOwner(context)) {
             try {
