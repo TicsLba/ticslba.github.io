@@ -70,7 +70,7 @@ public class SplashActivity extends Activity {
         content.addView(product, pp);
 
         TextView version = new TextView(this);
-        version.setText("GESTIÓN INSTITUCIONAL  ·  3.0");
+        version.setText("GESTIÓN INSTITUCIONAL  ·  3.1");
         version.setTextColor(Color.rgb(244, 90, 30));
         version.setTextSize(11);
         version.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
