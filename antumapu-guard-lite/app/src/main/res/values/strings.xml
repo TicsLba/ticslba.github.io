@@ -1,6 +1,5 @@
 <resources>
     <string name="app_name">Pangi</string>
     <string name="app_tagline">Gestión institucional</string>
-    <string name="device_admin_description">Pangi administra políticas institucionales del dispositivo como Device Owner.</string>
-    <string name="accessibility_description">Recurso heredado no utilizado por Pangi 2.0.</string>
+    <string name="device_admin_description">Pangi administra las políticas institucionales de esta tablet como Device Owner.</string>
 </resources>
