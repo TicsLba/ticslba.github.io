@@ -11,6 +11,11 @@
         android:supportsRtl="true">
 
         <activity
+            android:name=".RecoveryActivity"
+            android:exported="true"
+            android:theme="@style/AppTheme" />
+
+        <activity
             android:name=".HomeActivity"
             android:exported="true"
             android:excludeFromRecents="true"
