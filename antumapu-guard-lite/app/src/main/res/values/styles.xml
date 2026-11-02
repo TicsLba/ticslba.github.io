@@ -1,16 +1,20 @@
 <resources>
     <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:fontFamily">sans</item>
-        <item name="android:colorAccent">#E58A2B</item>
-        <item name="android:statusBarColor">#103723</item>
-        <item name="android:navigationBarColor">#103723</item>
-        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:colorAccent">#F45A1E</item>
+        <item name="android:windowBackground">#F7F9F7</item>
+        <item name="android:statusBarColor">#FFFFFF</item>
+        <item name="android:navigationBarColor">#FFFFFF</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
     </style>
-    <style name="LockTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+
+    <style name="SplashTheme" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:fontFamily">sans</item>
-        <item name="android:colorAccent">#E58A2B</item>
-        <item name="android:statusBarColor">#0F2B1D</item>
-        <item name="android:navigationBarColor">#0F2B1D</item>
-        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowBackground">#FAFBFA</item>
+        <item name="android:statusBarColor">#FAFBFA</item>
+        <item name="android:navigationBarColor">#FAFBFA</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
     </style>
 </resources>
