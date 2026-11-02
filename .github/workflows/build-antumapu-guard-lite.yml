@@ -1,9 +1,9 @@
-name: Build Pangi 3.0
+name: Build Pangi 3.1 Fleet
 
 on:
   push:
     branches:
-      - chatgpt-pangi-3.0
+      - chatgpt-pangi-3.1-fleet
     paths:
       - 'antumapu-guard-lite/**'
       - '.github/workflows/build-antumapu-guard-lite.yml'
@@ -57,11 +57,11 @@ jobs:
           sha256sum antumapu-guard-lite/app/build/outputs/apk/release/app-release-unsigned.apk
 
       - name: Rename APK
-        run: cp antumapu-guard-lite/app/build/outputs/apk/release/app-release-unsigned.apk Pangi-3.0-unsigned.apk
+        run: cp antumapu-guard-lite/app/build/outputs/apk/release/app-release-unsigned.apk Pangi-3.1-unsigned.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Pangi-3.0-Unsigned
-          path: Pangi-3.0-unsigned.apk
+          name: Pangi-3.1-Unsigned
+          path: Pangi-3.1-unsigned.apk
           retention-days: 7
