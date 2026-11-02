@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pangi Console</title>
+  <link rel="preconnect" href="https://unpkg.com">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    :root{
+      --green:#005A12; --green2:#0E7A2C; --orange:#F45A1E;
+      --bg:#F5F7F5; --card:#FFFFFF; --text:#19301F; --muted:#6A786D;
+      --line:#E2E8E3; --red:#B42318;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
+    header{background:#fff;border-bottom:1px solid var(--line);padding:18px 22px;display:flex;gap:16px;align-items:center;position:sticky;top:0;z-index:1000}
+    .brand{font-weight:800;font-size:24px;letter-spacing:-.4px}
+    .brand span{color:var(--orange)}
+    .sub{font-size:12px;color:var(--muted)}
+    .spacer{flex:1}
+    .pill{padding:7px 11px;border-radius:999px;font-size:11px;font-weight:800;background:#E9F6EC;color:var(--green)}
+    main{padding:18px;max-width:1500px;margin:auto}
+    .login,.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:18px;box-shadow:0 5px 20px rgba(0,0,0,.03)}
+    .login{max-width:520px;margin:80px auto}
+    h1,h2,h3{margin:0}
+    input{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:12px;font-size:14px;margin-top:12px}
+    button{border:0;border-radius:12px;padding:11px 13px;font-weight:800;cursor:pointer}
+    .primary{background:var(--green);color:#fff}
+    .outline{background:#fff;color:var(--green);border:1px solid #BCD1BF}
+    .danger{background:#FFF0ED;color:var(--red);border:1px solid #F3C7C0}
+    .topgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px}
+    .metric{background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px}
+    .metric .n{font-size:28px;font-weight:800}
+    .metric .l{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+    .layout{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(480px,.9fr);gap:14px}
+    #map{height:560px;border-radius:18px;border:1px solid var(--line)}
+    .devices{display:flex;flex-direction:column;gap:10px;max-height:560px;overflow:auto}
+    .device{background:#fff;border:1px solid var(--line);border-radius:17px;padding:14px}
+    .deviceHead{display:flex;gap:12px;align-items:flex-start}
+    .dot{width:10px;height:10px;border-radius:50%;margin-top:6px;background:#AAA}
+    .dot.on{background:#19A44A;box-shadow:0 0 0 4px #E8F8ED}
+    .title{font-weight:800;font-size:15px}
+    .meta{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.45}
+    .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .tag{background:#F1F4F1;padding:6px 8px;border-radius:10px;font-size:11px;font-weight:700}
+    .actions{display:flex;gap:8px;margin-top:12px}
+    .actions button{flex:1}
+    .empty{padding:24px;text-align:center;color:var(--muted)}
+    .warn{font-size:11px;color:var(--muted);margin-top:12px;line-height:1.5}
+    @media(max-width:980px){.layout{grid-template-columns:1fr}.topgrid{grid-template-columns:1fr 1fr}#map{height:400px}.devices{max-height:none}}
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <div class="brand">Pangi <span>Console</span></div>
+      <div class="sub">Liceo Bicentenario Antumapu · Gestión de tablets institucionales</div>
+    </div>
+    <div class="spacer"></div>
+    <div class="pill" id="clock">—</div>
+  </header>
+
+  <main>
+    <section id="login" class="login">
+      <h2>Acceso administrativo</h2>
+      <p class="sub" style="margin-top:8px">Ingresa el ADMIN_TOKEN generado por la hoja Config.</p>
+      <input id="token" type="password" placeholder="ADMIN_TOKEN">
+      <button class="primary" style="width:100%;margin-top:12px" onclick="login()">Ingresar</button>
+      <div class="warn">Esta consola muestra únicamente información de los dispositivos institucionales. No debe usarse para registrar identidad, cuenta o actividad personal de estudiantes.</div>
+    </section>
+
+    <section id="app" style="display:none">
+      <div class="topgrid">
+        <div class="metric"><div class="l">Tablets</div><div class="n" id="mTotal">0</div></div>
+        <div class="metric"><div class="l">En línea</div><div class="n" id="mOnline">0</div></div>
+        <div class="metric"><div class="l">Fuera de línea</div><div class="n" id="mOffline">0</div></div>
+        <div class="metric"><div class="l">GPS activo</div><div class="n" id="mGps">0</div></div>
+      </div>
+
+      <div class="layout">
+        <div class="card" style="padding:12px">
+          <div id="map"></div>
+        </div>
+        <div>
+          <div style="display:flex;align-items:center;margin-bottom:10px">
+            <h3>Dispositivos</h3>
+            <div class="spacer"></div>
+            <button class="outline" onclick="refresh()">Actualizar</button>
+          </div>
+          <div class="devices" id="devices"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    let adminToken = '';
+    let map = null;
+    let markers = [];
+
+    function nowClock(){
+      document.getElementById('clock').textContent =
+        new Intl.DateTimeFormat('es-CL',{dateStyle:'short',timeStyle:'medium'}).format(new Date());
+    }
+    setInterval(nowClock,1000); nowClock();
+
+    function login(){
+      const t = document.getElementById('token').value.trim();
+      if(!t){ alert('Ingresa el ADMIN_TOKEN'); return; }
+      adminToken = t;
+      google.script.run
+        .withSuccessHandler(data => {
+          localStorage.setItem('pangiAdminToken', adminToken);
+          document.getElementById('login').style.display='none';
+          document.getElementById('app').style.display='block';
+          initMap();
+          render(data);
+        })
+        .withFailureHandler(err => alert(err.message || err))
+        .consoleList(adminToken);
+    }
+
+    function initMap(){
+      if(map) return;
+      map = L.map('map').setView([-32.79,-71.19], 11);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+        maxZoom:19,
+        attribution:'© OpenStreetMap'
+      }).addTo(map);
+    }
+
+    function refresh(){
+      google.script.run
+        .withSuccessHandler(render)
+        .withFailureHandler(err => alert(err.message || err))
+        .consoleList(adminToken);
+    }
+
+    function render(list){
+      list = list || [];
+      document.getElementById('mTotal').textContent = list.length;
+      document.getElementById('mOnline').textContent = list.filter(x=>x.online).length;
+      document.getElementById('mOffline').textContent = list.filter(x=>!x.online).length;
+      document.getElementById('mGps').textContent = list.filter(x=>x.gps==='Activo').length;
+
+      markers.forEach(m=>map.removeLayer(m));
+      markers=[];
+
+      const wrap=document.getElementById('devices');
+      wrap.innerHTML='';
+
+      if(!list.length){
+        wrap.innerHTML='<div class="empty">Aún no hay tablets reportando a Pangi Console.</div>';
+        return;
+      }
+
+      const bounds=[];
+      list.forEach(d=>{
+        const el=document.createElement('div');
+        el.className='device';
+
+        const seen=d.lastSeen ? relativeTime(new Date(d.lastSeen)) : 'sin conexión';
+        const battery=d.battery==null ? '—' : d.battery+'%';
+        const loc=(d.lat!=null && d.lon!=null)
+          ? d.lat.toFixed(5)+', '+d.lon.toFixed(5)
+          : 'sin ubicación';
+
+        el.innerHTML = `
+          <div class="deviceHead">
+            <div class="dot ${d.online?'on':''}"></div>
+            <div style="flex:1">
+              <div class="title">${escapeHtml(d.alias || d.model || d.deviceId)}</div>
+              <div class="meta">${escapeHtml(d.manufacturer+' '+d.model)} · Android ${escapeHtml(d.android)}<br>
+                ${d.online?'En línea':'Fuera de línea'} · ${escapeHtml(seen)}
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="tag">Batería ${battery}</div>
+            <div class="tag">GPS ${escapeHtml(d.gps || '—')}</div>
+            <div class="tag">${escapeHtml(d.charging==='Sí'?'Cargando':'Sin carga')}</div>
+          </div>
+          <div class="meta" style="margin-top:10px">Ubicación: ${escapeHtml(loc)}
+            ${d.accuracy!=null ? ' · ±'+Math.round(d.accuracy)+' m':''}
+          </div>
+          <div class="meta">Comando: ${escapeHtml(d.commandStatus || '—')}</div>
+          <div class="actions">
+            <button class="outline" onclick="sendCommand('${jsq(d.deviceId)}','LOCATE')">Ubicar ahora</button>
+            <button class="danger" onclick="lockDevice('${jsq(d.deviceId)}','${jsq(d.alias||d.model)}')">Bloquear</button>
+          </div>
+        `;
+        wrap.appendChild(el);
+
+        if(d.lat!=null && d.lon!=null){
+          const marker=L.marker([d.lat,d.lon]).addTo(map)
+            .bindPopup('<b>'+escapeHtml(d.alias||d.model)+'</b><br>'+escapeHtml(seen));
+          markers.push(marker);
+          bounds.push([d.lat,d.lon]);
+        }
+      });
+
+      if(bounds.length===1) map.setView(bounds[0],16);
+      else if(bounds.length>1) map.fitBounds(bounds,{padding:[30,30]});
+    }
+
+    function sendCommand(deviceId, cmd){
+      google.script.run
+        .withSuccessHandler(()=>{ refresh(); })
+        .withFailureHandler(err=>alert(err.message||err))
+        .consoleCommand(adminToken, deviceId, cmd);
+    }
+
+    function lockDevice(deviceId, name){
+      if(!confirm('¿Bloquear ahora '+name+'?')) return;
+      sendCommand(deviceId,'LOCK');
+    }
+
+    function relativeTime(date){
+      const s=Math.max(0,Math.floor((Date.now()-date.getTime())/1000));
+      if(s<60) return 'hace '+s+' s';
+      const m=Math.floor(s/60);
+      if(m<60) return 'hace '+m+' min';
+      const h=Math.floor(m/60);
+      if(h<24) return 'hace '+h+' h';
+      return date.toLocaleString('es-CL');
+    }
+
+    function escapeHtml(s){
+      return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+    function jsq(s){ return String(s??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+
+    const saved = localStorage.getItem('pangiAdminToken');
+    if(saved){
+      document.getElementById('token').value=saved;
+      setTimeout(login,50);
+    }
+
+    setInterval(()=>{ if(adminToken) refresh(); }, 20000);
+  </script>
+</body>
+</html>
