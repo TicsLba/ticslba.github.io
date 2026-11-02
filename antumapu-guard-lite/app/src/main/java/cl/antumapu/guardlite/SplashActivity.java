@@ -1,6 +1,8 @@
 package cl.antumapu.guardlite;
 
 import android.app.Activity;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.os.Bundle;
@@ -13,6 +15,8 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+
+import java.io.File;
 
 public class SplashActivity extends Activity {
     private final Handler handler = new Handler();
@@ -46,7 +50,9 @@ public class SplashActivity extends Activity {
         content.addView(topSpace, new LinearLayout.LayoutParams(1, 0, 0.12f));
 
         ImageView emblem = new ImageView(this);
-        emblem.setImageResource(R.drawable.logo_antumapu);
+        Bitmap bitmap = loadInstitutionalLogo();
+        if (bitmap != null) emblem.setImageBitmap(bitmap);
+        else emblem.setImageResource(R.drawable.ic_pangi);
         emblem.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
         emblem.setContentDescription("Liceo Bicentenario Antumapu");
         emblem.setAlpha(0f);
@@ -117,6 +123,17 @@ public class SplashActivity extends Activity {
         product.animate().alpha(1f).setStartDelay(90).setDuration(280).start();
 
         handler.postDelayed(this::finish, 1450L);
+    }
+
+    private Bitmap loadInstitutionalLogo() {
+        try {
+            File dir = getExternalFilesDir(null);
+            if (dir == null) return null;
+            File png = new File(dir, "logo_antumapu.png");
+            if (png.exists()) return BitmapFactory.decodeFile(png.getAbsolutePath());
+        } catch (Exception ignored) {
+        }
+        return null;
     }
 
     @Override protected void onDestroy() {
