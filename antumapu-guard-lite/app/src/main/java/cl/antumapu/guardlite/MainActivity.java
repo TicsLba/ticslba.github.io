@@ -144,7 +144,7 @@ public class MainActivity extends Activity {
         tp.setMargins(0, dp(18), 0, dp(4));
         root.addView(title, tp);
 
-        TextView v = text("GESTIÓN INSTITUCIONAL · 3.0", 11, ORANGE, true);
+        TextView v = text("GESTIÓN INSTITUCIONAL · 3.1", 11, ORANGE, true);
         v.setLetterSpacing(0.12f);
         v.setGravity(Gravity.CENTER);
         root.addView(v);
@@ -181,7 +181,7 @@ public class MainActivity extends Activity {
         pp.setMargins(0, dp(14), 0, 0);
         root.addView(product, pp);
 
-        TextView brand = text("ADMINISTRACIÓN · 3.0", 11, ORANGE, true);
+        TextView brand = text("ADMINISTRACIÓN · 3.1", 11, ORANGE, true);
         brand.setLetterSpacing(0.13f);
         brand.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(-1, -2);
@@ -266,7 +266,7 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams htp = new LinearLayout.LayoutParams(0, -2, 1f);
         htp.setMargins(dp(14), 0, 0, 0);
 
-        TextView kicker = text("PANGI 3.0", 11, ORANGE, true);
+        TextView kicker = text("PANGI 3.1", 11, ORANGE, true);
         kicker.setLetterSpacing(0.13f);
         heroText.addView(kicker);
         heroText.addView(text("Gestión institucional", 24, TEXT, true));
@@ -338,7 +338,7 @@ public class MainActivity extends Activity {
         homeTitle.addView(pill(nativeHome ? "INTACTO" : "REVISAR", nativeHome));
 
         launcher.addView(text(
-                "Pangi 3.0 no declara CATEGORY_HOME, no reemplaza el escritorio y no intercepta el botón Inicio.",
+                "Pangi 3.1 no declara CATEGORY_HOME, no reemplaza el escritorio y no intercepta el botón Inicio.",
                 13, MUTED, false));
 
         TextView pkg = text(
@@ -359,6 +359,120 @@ public class MainActivity extends Activity {
         }
 
         content.addView(launcher);
+
+        LinearLayout fleet = card();
+        fleet.addView(sectionLabel("CONSOLA DE FLOTA"));
+
+        boolean fleetConfigured = Prefs.consoleConfigured(this);
+        boolean fleetOn = Prefs.fleetEnabled(this);
+
+        LinearLayout fleetTitle = new LinearLayout(this);
+        fleetTitle.setOrientation(LinearLayout.HORIZONTAL);
+        fleetTitle.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams ftp = new LinearLayout.LayoutParams(-1, -2);
+        ftp.setMargins(0, dp(9), 0, dp(5));
+        fleet.addView(fleetTitle, ftp);
+
+        TextView fleetName = text("Monitoreo institucional", 17, TEXT, true);
+        fleetTitle.addView(fleetName, new LinearLayout.LayoutParams(0, -2, 1f));
+        fleetTitle.addView(pill(fleetOn ? "EN LÍNEA" : (fleetConfigured ? "LISTO" : "SIN CONFIGURAR"),
+                fleetOn || fleetConfigured));
+
+        fleet.addView(text(
+                "Reporta estado de la tablet, batería y ubicación del dispositivo institucional. " +
+                        "La ubicación se muestra de forma transparente mediante una notificación persistente.",
+                13, MUTED, false));
+
+        TextView deviceId = text("ID: " + Prefs.deviceId(this), 11, GREEN_DARK, true);
+        LinearLayout.LayoutParams dip = new LinearLayout.LayoutParams(-1, -2);
+        dip.setMargins(0, dp(9), 0, 0);
+        fleet.addView(deviceId, dip);
+
+        long hb = Prefs.lastHeartbeat(this);
+        String hbText = hb == 0L ? "Sin heartbeat registrado"
+                : "Último heartbeat: " +
+                new java.text.SimpleDateFormat("dd/MM HH:mm:ss", java.util.Locale.getDefault())
+                        .format(new java.util.Date(hb));
+        TextView heartbeatInfo = text(hbText, 12, MUTED, false);
+        LinearLayout.LayoutParams hip = new LinearLayout.LayoutParams(-1, -2);
+        hip.setMargins(0, dp(5), 0, 0);
+        fleet.addView(heartbeatInfo, hip);
+
+        if (Prefs.hasLocation(this)) {
+            long locAt = Prefs.lastLocationAt(this);
+            String locText = "Última ubicación: " +
+                    String.format(java.util.Locale.US, "%.5f, %.5f", Prefs.lastLat(this), Prefs.lastLon(this)) +
+                    " · ±" + Math.round(Prefs.lastAccuracy(this)) + " m";
+            if (locAt > 0L) {
+                locText += " · " +
+                        new java.text.SimpleDateFormat("dd/MM HH:mm", java.util.Locale.getDefault())
+                                .format(new java.util.Date(locAt));
+            }
+            TextView locationInfo = text(locText, 12, MUTED, false);
+            LinearLayout.LayoutParams lip = new LinearLayout.LayoutParams(-1, -2);
+            lip.setMargins(0, dp(4), 0, 0);
+            fleet.addView(locationInfo, lip);
+        }
+
+        LinearLayout monitorRow = new LinearLayout(this);
+        monitorRow.setOrientation(LinearLayout.HORIZONTAL);
+        monitorRow.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams mrp = new LinearLayout.LayoutParams(-1, -2);
+        mrp.setMargins(0, dp(13), 0, 0);
+        fleet.addView(monitorRow, mrp);
+
+        LinearLayout monitorLabels = new LinearLayout(this);
+        monitorLabels.setOrientation(LinearLayout.VERTICAL);
+        monitorLabels.addView(text("Monitoreo remoto", 15, TEXT, true));
+        monitorLabels.addView(text("Heartbeat cada 60 s · GPS periódico · comandos remotos",
+                11, MUTED, false));
+        monitorRow.addView(monitorLabels, new LinearLayout.LayoutParams(0, -2, 1f));
+
+        Switch fleetSwitch = new Switch(this);
+        fleetSwitch.setChecked(fleetOn);
+        fleetSwitch.setEnabled(owner && fleetConfigured);
+        fleetSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isChecked && !Prefs.consoleConfigured(this)) {
+                buttonView.setChecked(false);
+                showFleetSetup();
+                return;
+            }
+            PangiPolicyManager.setFleetMonitoring(this, isChecked);
+            Toast.makeText(this,
+                    isChecked ? "Monitoreo institucional activado" : "Monitoreo detenido",
+                    Toast.LENGTH_SHORT).show();
+            buildDashboard();
+        });
+        monitorRow.addView(fleetSwitch);
+
+        Button configureFleet = actionButton(
+                fleetConfigured ? "EDITAR CONSOLA" : "CONFIGURAR CONSOLA", false);
+        configureFleet.setOnClickListener(v -> showFleetSetup());
+        fleet.addView(configureFleet);
+
+        Button testFleet = actionButton("PROBAR CONEXIÓN", false);
+        testFleet.setEnabled(fleetConfigured);
+        testFleet.setOnClickListener(v -> {
+            Toast.makeText(this, "Probando conexión…", Toast.LENGTH_SHORT).show();
+            new Thread(() -> {
+                boolean ok = FleetClient.test(MainActivity.this);
+                runOnUiThread(() -> Toast.makeText(
+                        MainActivity.this,
+                        ok ? "Consola conectada correctamente" : "No fue posible conectar con la consola",
+                        Toast.LENGTH_LONG).show());
+            }, "PangiFleetTest").start();
+        });
+        fleet.addView(testFleet);
+
+        TextView privacy = text(
+                "Privacidad: Pangi identifica la tablet, no al estudiante. No registra micrófono, cámara, " +
+                        "mensajes ni contenido personal.",
+                11, MUTED, false);
+        LinearLayout.LayoutParams prp = new LinearLayout.LayoutParams(-1, -2);
+        prp.setMargins(0, dp(12), 0, 0);
+        fleet.addView(privacy, prp);
+
+        content.addView(fleet);
 
         LinearLayout policies = card();
         policies.addView(sectionLabel("POLÍTICAS DE PROTECCIÓN"));
@@ -436,7 +550,7 @@ public class MainActivity extends Activity {
         content.addView(admin);
 
         TextView foot = text(
-                "Pangi 3.0 · Gestión institucional · Launcher OEM intacto · Sin root\n" +
+                "Pangi 3.1 · Gestión institucional · Launcher OEM intacto · Sin root\n" +
                         "Desarrollado por la Coordinación Informática del Liceo Bicentenario Antumapu\n" +
                         "© Eduardo Pérez González",
                 10, Color.rgb(119, 131, 122), false);
@@ -505,6 +619,74 @@ public class MainActivity extends Activity {
         p.setMargins(0, dp(11), 0, 0);
         b.setLayoutParams(p);
         return b;
+    }
+
+    private void showFleetSetup() {
+        LinearLayout fields = new LinearLayout(this);
+        fields.setOrientation(LinearLayout.VERTICAL);
+        fields.setPadding(dp(20), dp(6), dp(20), 0);
+
+        final EditText url = new EditText(this);
+        url.setHint("URL HTTPS de Pangi Console");
+        url.setSingleLine(true);
+        url.setText(Prefs.consoleUrl(this));
+        url.setInputType(android.text.InputType.TYPE_CLASS_TEXT |
+                android.text.InputType.TYPE_TEXT_VARIATION_URI);
+
+        final EditText token = new EditText(this);
+        token.setHint("Token de dispositivos");
+        token.setSingleLine(true);
+        token.setText(Prefs.consoleToken(this));
+        token.setInputType(android.text.InputType.TYPE_CLASS_TEXT |
+                android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+
+        final EditText label = new EditText(this);
+        label.setHint("Alias, por ejemplo TAB-SAMSUNG-01");
+        label.setSingleLine(true);
+        label.setText(Prefs.deviceLabel(this));
+
+        fields.addView(url);
+        fields.addView(token);
+        fields.addView(label);
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Pangi Console")
+                .setMessage("Vincula esta tablet a la consola institucional. La URL debe usar HTTPS.")
+                .setView(fields)
+                .setNegativeButton("Cancelar", null)
+                .setPositiveButton("Guardar", null)
+                .create();
+
+        dialog.setOnShowListener(d ->
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                    String u = url.getText() == null ? "" : url.getText().toString().trim();
+                    String t = token.getText() == null ? "" : token.getText().toString().trim();
+                    String l = label.getText() == null ? "" : label.getText().toString().trim();
+
+                    if (!u.startsWith("https://")) {
+                        Toast.makeText(this, "La consola debe usar HTTPS", Toast.LENGTH_LONG).show();
+                        return;
+                    }
+
+                    if (t.length() < 12) {
+                        Toast.makeText(this, "Token de consola inválido", Toast.LENGTH_LONG).show();
+                        return;
+                    }
+
+                    if (l.length() == 0) l = Build.MANUFACTURER + " " + Build.MODEL;
+
+                    Prefs.setConsoleConfig(this, u, t, l);
+                    dialog.dismiss();
+
+                    if (Prefs.fleetEnabled(this)) {
+                        PangiPolicyManager.setFleetMonitoring(this, true);
+                    }
+
+                    Toast.makeText(this, "Consola guardada", Toast.LENGTH_SHORT).show();
+                    buildDashboard();
+                }));
+
+        dialog.show();
     }
 
     private void showPinSetup() {
