@@ -3,6 +3,8 @@ package cl.antumapu.guardlite;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -19,6 +21,8 @@ import android.widget.ScrollView;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import java.io.File;
 
 public class MainActivity extends Activity {
     private static final int GREEN = Color.rgb(0, 90, 18);
@@ -77,9 +81,22 @@ public class MainActivity extends Activity {
         return t;
     }
 
+    private Bitmap loadInstitutionalLogo() {
+        try {
+            File dir = getExternalFilesDir(null);
+            if (dir == null) return null;
+            File png = new File(dir, "logo_antumapu.png");
+            if (png.exists()) return BitmapFactory.decodeFile(png.getAbsolutePath());
+        } catch (Exception ignored) {
+        }
+        return null;
+    }
+
     private ImageView logo(int sizeDp) {
         ImageView i = new ImageView(this);
-        i.setImageResource(R.drawable.logo_antumapu);
+        Bitmap bitmap = loadInstitutionalLogo();
+        if (bitmap != null) i.setImageBitmap(bitmap);
+        else i.setImageResource(R.drawable.ic_pangi);
         i.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
         i.setContentDescription("Liceo Bicentenario Antumapu");
         i.setLayoutParams(new LinearLayout.LayoutParams(dp(sizeDp), dp(sizeDp)));
