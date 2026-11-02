@@ -1,9 +1,9 @@
-name: Build Pangi 2.2
+name: Build Pangi Recovery
 
 on:
   push:
     branches:
-      - chatgpt-antumapu-guard-lite-build
+      - chatgpt-pangi-recovery
     paths:
       - 'antumapu-guard-lite/**'
       - '.github/workflows/build-antumapu-guard-lite.yml'
@@ -57,11 +57,11 @@ jobs:
           sha256sum antumapu-guard-lite/app/build/outputs/apk/release/app-release-unsigned.apk
 
       - name: Rename APK
-        run: cp antumapu-guard-lite/app/build/outputs/apk/release/app-release-unsigned.apk Pangi-2.2-unsigned.apk
+        run: cp antumapu-guard-lite/app/build/outputs/apk/release/app-release-unsigned.apk Pangi-2.2.1-recovery-unsigned.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Pangi-2.2-Unsigned
-          path: Pangi-2.2-unsigned.apk
+          name: Pangi-2.2.1-Recovery-Unsigned
+          path: Pangi-2.2.1-recovery-unsigned.apk
           retention-days: 7
